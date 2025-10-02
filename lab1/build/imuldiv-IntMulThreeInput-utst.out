@@ -1,0 +1,7 @@
+VCD info: dumpfile imuldiv-IntMulThreeInput.vcd opened for output.
+
+ Entering Test Suite: imuldiv-IntMulThreeInput
+  + Running Test Case: mul
+     [ passed ] Test ( Is sink finished? ) succeeded 
+
+../imuldiv/imuldiv-IntMulThreeInput.t.v:147: $finish called at 100155 (1s)

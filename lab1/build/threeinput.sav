@@ -1,0 +1,53 @@
+[*]
+[*] GTKWave Analyzer v3.3.116 (w)1999-2023 BSI
+[*] Thu Sep 25 04:35:34 2025
+[*]
+[dumpfile] "/mnt/c/Users/WEN/Desktop/computer_Arch/lab1/build/imuldiv-IntMulThreeInput.vcd"
+[dumpfile_mtime] "Thu Sep 25 02:56:27 2025"
+[dumpfile_size] 393534
+[savefile] "/mnt/c/Users/WEN/Desktop/computer_Arch/lab1/build/threeinput.sav"
+[timestart] 0
+[size] 1920 985
+[pos] -1 -1
+*-4.120036 130 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tester.
+[treeopen] tester.t0.
+[treeopen] tester.t0.imuldiv.
+[treeopen] tester.t0.imuldiv.mul_ab.
+[treeopen] tester.t0.imuldiv.mul_hi.
+[sst_width] 413
+[signals_width] 319
+[sst_expanded] 1
+[sst_vpaned_height] 390
+@28
+tester.t0.imuldiv.mul_ab.clk
+tester.t0.imuldiv.muldivreq_rdy
+tester.t0.imuldiv.muldivreq_val
+tester.t0.imuldiv.muldivresp_rdy
+tester.t0.imuldiv.muldivresp_val
+@22
+tester.t0.imuldiv.muldivresp_msg_result[95:0]
+@28
+tester.t0.imuldiv.ab_val
+tester.t0.imuldiv.ab_rdy
+@22
+[color] 6
+tester.t0.imuldiv.ab_result[63:0]
+@28
+tester.t0.imuldiv.hi_val
+@22
+tester.t0.imuldiv.hi_result[63:0]
+@28
+[color] 4
+tester.t0.imuldiv.lo_rdy
+tester.t0.imuldiv.lo_val
+@22
+[color] 7
+tester.t0.imuldiv.lo_result[63:0]
+@28
+tester.t0.imuldiv.final_val
+@22
+[color] 6
+tester.t0.imuldiv.final_result[95:0]
+[pattern_trace] 1
+[pattern_trace] 0

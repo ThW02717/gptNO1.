@@ -1,0 +1,36 @@
+
+ Entering Test Suite: imuldiv-MulDivReqMsg
+  + Running Test Case: TestBasicFullStr
+     [ passed ] Test (        0,          1 ) succeeded, [ 00000000000000001 == 00000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 00000002a00000001 == 00000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 00000001200000044 == 00000001200000044 ]
+     [ passed ] Test (        0,          1 ) succeeded, [ 10000000000000001 == 10000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 10000002a00000001 == 10000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 10000001200000044 == 10000001200000044 ]
+     [ passed ] Test (        0,          1 ) succeeded, [ 20000000000000001 == 20000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 20000002a00000001 == 20000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 20000001200000044 == 20000001200000044 ]
+     [ passed ] Test (        0,          1 ) succeeded, [ 30000000000000001 == 30000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 30000002a00000001 == 30000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 30000001200000044 == 30000001200000044 ]
+     [ passed ] Test (        0,          1 ) succeeded, [ 40000000000000001 == 40000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 40000002a00000001 == 40000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 40000001200000044 == 40000001200000044 ]
+  + Running Test Case: TestBasicTinyStr
+     [ passed ] Test ( *  ) succeeded, [ 00000000000000001 == 00000000000000001 ]
+     [ passed ] Test ( *  ) succeeded, [ 00000002a00000001 == 00000002a00000001 ]
+     [ passed ] Test ( *  ) succeeded, [ 00000001200000044 == 00000001200000044 ]
+     [ passed ] Test ( /  ) succeeded, [ 10000000000000001 == 10000000000000001 ]
+     [ passed ] Test ( /  ) succeeded, [ 10000002a00000001 == 10000002a00000001 ]
+     [ passed ] Test ( /  ) succeeded, [ 10000001200000044 == 10000001200000044 ]
+     [ passed ] Test ( /u ) succeeded, [ 20000000000000001 == 20000000000000001 ]
+     [ passed ] Test ( /u ) succeeded, [ 20000002a00000001 == 20000002a00000001 ]
+     [ passed ] Test ( /u ) succeeded, [ 20000001200000044 == 20000001200000044 ]
+     [ passed ] Test ( %  ) succeeded, [ 30000000000000001 == 30000000000000001 ]
+     [ passed ] Test ( %  ) succeeded, [ 30000002a00000001 == 30000002a00000001 ]
+     [ passed ] Test ( %  ) succeeded, [ 30000001200000044 == 30000001200000044 ]
+     [ passed ] Test ( %u ) succeeded, [ 40000000000000001 == 40000000000000001 ]
+     [ passed ] Test ( %u ) succeeded, [ 40000002a00000001 == 40000002a00000001 ]
+     [ passed ] Test ( %u ) succeeded, [ 40000001200000044 == 40000001200000044 ]
+
+../imuldiv/imuldiv-MulDivReqMsg.t.v:171: $finish called at 425 (1s)

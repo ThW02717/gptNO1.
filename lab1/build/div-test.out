@@ -1,0 +1,7 @@
+VCD info: dumpfile imuldiv-IntDivIterative.vcd opened for output.
+
+ Entering Test Suite: imuldiv-IntDivIterative
+  + Running Test Case: div/rem
+     [ passed ] Test ( Is sink finished? ) succeeded 
+
+../imuldiv/imuldiv-IntDivIterative.t.v:137: $finish called at 10155 (1s)

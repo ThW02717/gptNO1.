@@ -1,0 +1,12 @@
+
+ Entering Test Suite: vc-Memories
+  + Running Test Case: vc_Mem_magic1port
+     [ passed ] Test ( Is sink finished? ) succeeded 
+  + Running Test Case: vc_Mem_magic2port
+     [ passed ] Test ( Is sink finished? ) succeeded 
+  + Running Test Case: vc_Mem_test1port (basic)
+     [ passed ] Test ( Is sink finished? ) succeeded 
+  + Running Test Case: vc_Mem_test1port (with random delay)
+     [ passed ] Test ( Is sink finished? ) succeeded 
+
+../vc/vc-Memories.t.v:433: $finish called at 2245 (1s)

@@ -1,0 +1,7 @@
+VCD info: dumpfile imuldiv-IntMulDivSingleCycle.vcd opened for output.
+
+ Entering Test Suite: imuldiv-IntMulDivSingleCycle
+  + Running Test Case: mul
+     [ passed ] Test ( Is sink finished? ) succeeded 
+
+../imuldiv/imuldiv-IntMulDivSingleCycle.t.v:128: $finish called at 10155 (1s)

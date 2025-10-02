@@ -1,0 +1,11 @@
+VCD info: dumpfile imuldiv-IntMulDivIterative.vcd opened for output.
+
+ Entering Test Suite: imuldiv-IntMulDivIterative
+  + Running Test Case: mul
+     [ passed ] Test ( Is sink finished? ) succeeded 
+  + Running Test Case: div/rem
+     [ passed ] Test ( Is sink finished? ) succeeded 
+  + Running Test Case: mixed
+     [ passed ] Test ( Is sink finished? ) succeeded 
+
+../imuldiv/imuldiv-IntMulDivIterative.t.v:206: $finish called at 30215 (1s)

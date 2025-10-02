@@ -1,0 +1,18 @@
+
+ Entering Test Suite: imuldiv-DivReqMsg
+  + Running Test Case: TestBasicFullStr
+     [ passed ] Test (        0,          1 ) succeeded, [ 10000000000000001 == 10000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 10000002a00000001 == 10000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 10000001200000044 == 10000001200000044 ]
+     [ passed ] Test (        0,          1 ) succeeded, [ 00000000000000001 == 00000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 00000002a00000001 == 00000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 00000001200000044 == 00000001200000044 ]
+  + Running Test Case: TestBasicTinyStr
+     [ passed ] Test (        0,          1 ) succeeded, [ 10000000000000001 == 10000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 10000002a00000001 == 10000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 10000001200000044 == 10000001200000044 ]
+     [ passed ] Test (        0,          1 ) succeeded, [ 00000000000000001 == 00000000000000001 ]
+     [ passed ] Test (       42,          1 ) succeeded, [ 00000002a00000001 == 00000002a00000001 ]
+     [ passed ] Test (       18,         68 ) succeeded, [ 00000001200000044 == 00000001200000044 ]
+
+../imuldiv/imuldiv-DivReqMsg.t.v:132: $finish called at 245 (1s)

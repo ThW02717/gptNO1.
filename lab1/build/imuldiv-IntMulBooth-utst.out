@@ -1,0 +1,7 @@
+VCD info: dumpfile imuldiv-IntMulBooth.vcd opened for output.
+
+ Entering Test Suite: imuldiv-IntMulBooth
+  + Running Test Case: mul
+     [ passed ] Test ( Is sink finished? ) succeeded 
+
+../imuldiv/imuldiv-IntMulBooth.t.v:151: $finish called at 10155 (1s)
