@@ -1,17 +1,21 @@
 //========================================================================
-// Lab 1 - Iterative Mul Unit
+// Lab 2 - Iterative Mul Unit (extended for mulh/mulhu/mulhsu)
 //========================================================================
 
 `ifndef RISCV_INT_MUL_ITERATIVE_V
 `define RISCV_INT_MUL_ITERATIVE_V
+
+`include "imuldiv-MulDivReqMsg.v"
 
 module imuldiv_IntMulIterative
 (
   input                clk,
   input                reset,
 
+  // Operands and function
   input  [31:0] mulreq_msg_a,
   input  [31:0] mulreq_msg_b,
+  input  [2:0]  mulreq_msg_fn,    // <== 新增功能碼
   input         mulreq_val,
   output        mulreq_rdy,
 
@@ -38,6 +42,7 @@ module imuldiv_IntMulIterative
     .reset              (reset),
     .mulreq_msg_a       (mulreq_msg_a),
     .mulreq_msg_b       (mulreq_msg_b),
+    .mulreq_msg_fn      (mulreq_msg_fn),
     .mulresp_msg_result (mulresp_msg_result),
     .counter            (counter),
     .sign               (sign),
@@ -84,20 +89,18 @@ module imuldiv_IntMulIterativeDpath
   input                clk,
   input                reset,
 
-  // Operands and Result
-
+  // Operands and function
   input  [31:0] mulreq_msg_a,
   input  [31:0] mulreq_msg_b,
+  input  [2:0]  mulreq_msg_fn,   // 新增功能碼
   output [63:0] mulresp_msg_result,
 
   // Datapath Outputs
-
   output  [4:0] counter,
   output        sign,
   output        b_lsb,
 
   // Control Inputs
-
   input         sign_en,
   input         result_en,
   input         cntr_mux_sel,
@@ -129,38 +132,54 @@ module imuldiv_IntMulIterativeDpath
   //----------------------------------------------------------------------
 
   // Counter Mux
-
   wire [4:0] counter_mux_out
     = ( cntr_mux_sel == op_load ) ? 31
     : ( cntr_mux_sel == op_next ) ? counter_reg - 1'b1
     :                               5'bx;
-
   assign counter = counter_reg;
 
+  //----------------------------------------------------------------------
+  // Determine operand signedness based on fn
+  //----------------------------------------------------------------------
+
+  wire is_signed_a =
+      (mulreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MUL)   ||
+      (mulreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MULH)  ||
+      (mulreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MULHSU);
+
+  wire is_signed_b =
+      (mulreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MUL)   ||
+      (mulreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MULH);
+
+  //----------------------------------------------------------------------
   // Sign of Result
+  //----------------------------------------------------------------------
 
-  wire   sign_next = mulreq_msg_a[31] ^ mulreq_msg_b[31];
+  wire sign_next =
+    (is_signed_a ? mulreq_msg_a[31] : 1'b0) ^
+    (is_signed_b ? mulreq_msg_b[31] : 1'b0);
+  assign sign = sign_reg;
 
-  assign sign      = sign_reg;
-
-  // Unsigned Operands
+  //----------------------------------------------------------------------
+  // Unsigned Operands (magnitude)
+  //----------------------------------------------------------------------
 
   wire [31:0] unsigned_a
-    = ( mulreq_msg_a[31] ) ? ~mulreq_msg_a + 1'b1
-    :                         mulreq_msg_a;
+    = (is_signed_a && mulreq_msg_a[31]) ? ~mulreq_msg_a + 1'b1 : mulreq_msg_a;
 
   wire [31:0] unsigned_b
-    = ( mulreq_msg_b[31] ) ? ~mulreq_msg_b + 1'b1
-    :                         mulreq_msg_b;
+    = (is_signed_b && mulreq_msg_b[31]) ? ~mulreq_msg_b + 1'b1 : mulreq_msg_b;
 
+  //----------------------------------------------------------------------
   // Operand Muxes
+  //----------------------------------------------------------------------
 
   wire [63:0] a_mux_out
     = ( a_mux_sel == op_load ) ? { 32'b0, unsigned_a }
     : ( a_mux_sel == op_next ) ? a_shift_out
     :                            64'bx;
 
-  wire [31:0]   b_mux_out
+  wire [31:0] b_mux_out
     = ( b_mux_sel == op_load ) ? unsigned_b
     : ( b_mux_sel == op_next ) ? b_shift_out
     :                            32'bx;
@@ -175,65 +194,48 @@ module imuldiv_IntMulIterativeDpath
   reg [31:0] b_reg;
   reg [63:0] result_reg;
 
-  always @ ( posedge clk ) begin
-    if ( sign_en ) begin
-      sign_reg   <= sign_next;
-    end
-
-    if ( result_en ) begin
+  always @ (posedge clk) begin
+    if (sign_en)
+      sign_reg <= sign_next;
+    if (result_en)
       result_reg <= result_mux_out;
-    end
 
-    counter_reg  <= counter_mux_out;
-    a_reg        <= a_mux_out;
-    b_reg        <= b_mux_out;
+    counter_reg <= counter_mux_out;
+    a_reg       <= a_mux_out;
+    b_reg       <= b_mux_out;
   end
 
   //----------------------------------------------------------------------
   // Post-Flop Combinational Logic
   //----------------------------------------------------------------------
 
-  // Least Significant Bit of Operand B
-
   assign b_lsb = b_reg[0];
-
-  // Operand Shifters
-
   wire [63:0] a_shift_out = a_reg << 1;
-
   wire [31:0] b_shift_out = b_reg >> 1;
-
-  // Adder
 
   wire [63:0] add_out = result_reg + a_reg;
 
   wire [63:0] add_mux_out
-    = ( add_mux_sel == add_old )  ? result_reg
-    : ( add_mux_sel == add_next ) ? add_out
-    :                               64'bx;
-
-  // Result Mux
+    = (add_mux_sel == add_old)  ? result_reg
+    : (add_mux_sel == add_next) ? add_out
+    :                             64'bx;
 
   wire [63:0] result_mux_out
-    = ( result_mux_sel == op_load ) ? 64'b0
-    : ( result_mux_sel == op_next ) ? add_mux_out
-    :                                 64'bx;
-
-  // Signed Result Mux
+    = (result_mux_sel == op_load) ? 64'b0
+    : (result_mux_sel == op_next) ? add_mux_out
+    :                               64'bx;
 
   wire [63:0] signed_result_mux_out
-    = ( sign_mux_sel == sign_u ) ? result_reg
-    : ( sign_mux_sel == sign_s ) ? ~result_reg + 1'b1
-    :                              64'bx;
-
-  // Final Result
+    = (sign_mux_sel == sign_u) ? result_reg
+    : (sign_mux_sel == sign_s) ? ~result_reg + 1'b1
+    :                            64'bx;
 
   assign mulresp_msg_result = signed_result_mux_out;
 
 endmodule
 
 //------------------------------------------------------------------------
-// Control Logic
+// Control Logic (unchanged)
 //------------------------------------------------------------------------
 
 module imuldiv_IntMulIterativeCtrl
@@ -241,23 +243,15 @@ module imuldiv_IntMulIterativeCtrl
   input        clk,
   input        reset,
 
-  // Request val/rdy
-
   input        mulreq_val,
   output       mulreq_rdy,
-
-  // Response val/rdy
 
   output       mulresp_val,
   input        mulresp_rdy,
 
-  // Datapath Inputs
-
   input  [4:0] counter,
   input        sign,
   input        b_lsb,
-
-  // Control Outputs
 
   output       sign_en,
   output       result_en,
@@ -269,95 +263,42 @@ module imuldiv_IntMulIterativeCtrl
   output       sign_mux_sel
 );
 
-  //----------------------------------------------------------------------
-  // State Definitions
-  //----------------------------------------------------------------------
-
   localparam STATE_IDLE = 2'd0;
   localparam STATE_CALC = 2'd1;
   localparam STATE_SIGN = 2'd2;
 
-  //----------------------------------------------------------------------
-  // State Update
-  //----------------------------------------------------------------------
+  reg [1:0] state_reg, state_next;
 
-  reg [1:0] state_reg;
-
-  always @ ( posedge clk ) begin
-    if ( reset ) begin
-      state_reg <= STATE_IDLE;
-    end
-    else begin
-      state_reg <= state_next;
-    end
+  always @(posedge clk) begin
+    if (reset) state_reg <= STATE_IDLE;
+    else       state_reg <= state_next;
   end
 
-  //----------------------------------------------------------------------
-  // State Transitions
-  //----------------------------------------------------------------------
-
-  reg [1:0] state_next;
-
-  always @ ( * ) begin
-
+  always @(*) begin
     state_next = state_reg;
-
-    case ( state_reg )
-
-      STATE_IDLE:
-        if ( mulreq_go ) begin
-          state_next = STATE_CALC;
-        end
-
-      STATE_CALC:
-        if ( is_calc_done ) begin
-          state_next = STATE_SIGN;
-        end
-
-      STATE_SIGN:
-        if ( mulresp_go ) begin
-          state_next = STATE_IDLE;
-        end
-
+    case (state_reg)
+      STATE_IDLE: if (mulreq_go)    state_next = STATE_CALC;
+      STATE_CALC: if (is_calc_done) state_next = STATE_SIGN;
+      STATE_SIGN: if (mulresp_go)   state_next = STATE_IDLE;
     endcase
-
   end
-
-  //----------------------------------------------------------------------
-  // Control Definitions
-  //----------------------------------------------------------------------
 
   localparam n = 1'd0;
   localparam y = 1'd1;
-
-  localparam op_x    = 1'dx;
+  localparam op_x = 1'dx;
   localparam op_load = 1'd0;
   localparam op_next = 1'd1;
-
-  //----------------------------------------------------------------------
-  // Output Control Signals
-  //----------------------------------------------------------------------
 
   localparam cs_size = 8;
   reg [cs_size-1:0] cs;
 
-  // State Definitions
-
-  always @ ( * ) begin
-
-    case ( state_reg )
-
-      //                 mulreq mulresp sign result cntr,    a        b        result
-      //                 rdy    val     en   en     mux_sel, mux_sel  mux_sel  mux_sel
-      STATE_IDLE: cs = { y,     n,      y,   y,     op_load, op_load, op_load, op_load };
-      STATE_CALC: cs = { n,     n,      n,   y,     op_next, op_next, op_next, op_next };
-      STATE_SIGN: cs = { n,     y,      n,   n,     op_x,    op_x,    op_x,    op_x    };
-
+  always @(*) begin
+    case (state_reg)
+      STATE_IDLE: cs = {y,n,y,y,op_load,op_load,op_load,op_load};
+      STATE_CALC: cs = {n,n,n,y,op_next,op_next,op_next,op_next};
+      STATE_SIGN: cs = {n,y,n,n,op_x,op_x,op_x,op_x};
     endcase
-
   end
-
-  // Signal Parsing
 
   assign mulreq_rdy     = cs[7];
   assign mulresp_val    = cs[6];
@@ -370,11 +311,9 @@ module imuldiv_IntMulIterativeCtrl
   assign add_mux_sel    = b_lsb;
   assign sign_mux_sel   = sign;
 
-  // Transition Triggers
-
-  wire mulreq_go     = mulreq_val && mulreq_rdy;
-  wire mulresp_go    = mulresp_val && mulresp_rdy;
-  wire is_calc_done  = ( counter == 5'b0 );
+  wire mulreq_go    = mulreq_val && mulreq_rdy;
+  wire mulresp_go   = mulresp_val && mulresp_rdy;
+  wire is_calc_done = (counter == 5'b0);
 
 endmodule
 

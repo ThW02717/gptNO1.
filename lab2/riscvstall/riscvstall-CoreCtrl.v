@@ -259,7 +259,9 @@ module riscv_CoreCtrl
   localparam md_divu = 3'd2;
   localparam md_rem  = 3'd3;
   localparam md_remu = 3'd4;
-
+  localparam md_mulh  = 3'd5;
+  localparam md_mulhu = 3'd6;
+  localparam md_mulhsu= 3'd7;
   // MulDiv Mux Select
 
   localparam mdm_x = 1'bx; // Don't Care
@@ -413,7 +415,11 @@ module riscv_CoreCtrl
       `RISCV_INST_MSG_DIVU   :cs={ y,  n,    br_none,  pm_p,   am_rdat, y,  bm_rdat,  y,  alu_x,     md_divu,y, mdm_l, em_md,  nr,  ml_x, dmm_x,  wm_alu,   y,  rd, n };
       `RISCV_INST_MSG_REM    :cs={ y,  n,    br_none,  pm_p,   am_rdat, y,  bm_rdat,  y,  alu_x,     md_rem, y, mdm_u, em_md,  nr,  ml_x, dmm_x,  wm_alu,   y,  rd, n };
       `RISCV_INST_MSG_REMU   :cs={ y,  n,    br_none,  pm_p,   am_rdat, y,  bm_rdat,  y,  alu_x,     md_remu,y, mdm_u, em_md,  nr,  ml_x, dmm_x,  wm_alu,   y,  rd, n };
-
+      // OBJECTIVE 2
+      // High-part Multiplications
+      `RISCV_INST_MSG_MULH   :cs={ y, n, br_none, pm_p, am_rdat, y, bm_rdat, y, alu_x, md_mulh,  y, mdm_l, em_md, nr, ml_x, dmm_x, wm_alu, y, rd, n };
+      `RISCV_INST_MSG_MULHU  :cs={ y, n, br_none, pm_p, am_rdat, y, bm_rdat, y, alu_x, md_mulhu, y, mdm_l, em_md, nr, ml_x, dmm_x, wm_alu, y, rd, n };
+      `RISCV_INST_MSG_MULHSU :cs={ y, n, br_none, pm_p, am_rdat, y, bm_rdat, y, alu_x, md_mulhsu,y, mdm_l, em_md, nr, ml_x, dmm_x, wm_alu, y, rd, n };
 
     endcase
 

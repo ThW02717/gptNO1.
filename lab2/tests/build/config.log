@@ -30,6 +30,8 @@ uname -v = #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025
 PATH: /opt/riscv/bin/
 PATH: /opt/riscv/bin/
 PATH: /opt/riscv/bin/
+PATH: /opt/riscv/bin/
+PATH: /opt/riscv/bin/
 PATH: /home/wen/bin/
 PATH: /usr/local/sbin/
 PATH: /usr/local/bin/

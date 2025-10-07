@@ -29,11 +29,17 @@ module imuldiv_IntMulDivIterative
   // Input Select
   //----------------------------------------------------------------------
 
-  wire mulreq_val    = ( muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MUL )
+  wire mulreq_val    = (( muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MUL ) ||
+                       ( muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MULH ) ||
+                       ( muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MULHU ) ||
+                       ( muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_MULHSU ))
                      &&  muldivreq_val && divreq_rdy;
 
-  wire divreq_val    = ( muldivreq_msg_fn != `IMULDIV_MULDIVREQ_MSG_FUNC_MUL )
-                     &&  muldivreq_val && mulreq_rdy;
+  wire divreq_val    = ((muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_DIV)  ||
+                        (muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_DIVU) ||
+                        (muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_REM)  ||
+                        (muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_REMU)
+                        ) && muldivreq_val && mulreq_rdy;
 
   wire divreq_msg_fn = ( muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_DIV
                      ||  muldivreq_msg_fn == `IMULDIV_MULDIVREQ_MSG_FUNC_REM );
@@ -53,9 +59,44 @@ module imuldiv_IntMulDivIterative
 
   assign muldivresp_val         = mulresp_val || divresp_val;
 
-  assign muldivresp_msg_result = ( mulresp_val ) ? mulresp_msg_result
-                               : ( divresp_val ) ? divresp_msg_result
-                               :                   64'bx;
+  reg [63:0] result_mux_out;
+
+  always @(*) begin
+    case (muldivreq_msg_fn)
+      // --------------------------
+      // Low part (original MUL)
+      // --------------------------
+      `IMULDIV_MULDIVREQ_MSG_FUNC_MUL:
+        result_mux_out = {32'b0, mulresp_msg_result[31:0]};
+
+      // --------------------------
+      // High 32-bit products
+      // --------------------------
+      `IMULDIV_MULDIVREQ_MSG_FUNC_MULH:   // signed × signed
+        result_mux_out = {32'b0, mulresp_msg_result[63:32]};
+
+      `IMULDIV_MULDIVREQ_MSG_FUNC_MULHU:  // unsigned × unsigned
+        result_mux_out = {32'b0, mulresp_msg_result[63:32]};
+
+      `IMULDIV_MULDIVREQ_MSG_FUNC_MULHSU: // signed × unsigned
+        result_mux_out = {32'b0, mulresp_msg_result[63:32]};
+
+      // --------------------------
+      // Division and Remainder
+      // --------------------------
+      `IMULDIV_MULDIVREQ_MSG_FUNC_DIV,
+      `IMULDIV_MULDIVREQ_MSG_FUNC_DIVU,
+      `IMULDIV_MULDIVREQ_MSG_FUNC_REM,
+      `IMULDIV_MULDIVREQ_MSG_FUNC_REMU:
+        result_mux_out = divresp_msg_result;
+
+      // Default fallback
+      default:
+        result_mux_out = 64'bx;
+    endcase
+  end
+
+  assign muldivresp_msg_result = result_mux_out;
 
   //----------------------------------------------------------------------
   // Mul/Div Modules
@@ -67,6 +108,7 @@ module imuldiv_IntMulDivIterative
     .reset              (reset),
     .mulreq_msg_a       (muldivreq_msg_a),
     .mulreq_msg_b       (muldivreq_msg_b),
+    .mulreq_msg_fn      (muldivreq_msg_fn),
     .mulreq_val         (mulreq_val),
     .mulreq_rdy         (mulreq_rdy),
     .mulresp_msg_result (mulresp_msg_result),

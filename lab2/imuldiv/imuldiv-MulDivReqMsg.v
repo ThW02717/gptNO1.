@@ -32,7 +32,10 @@
 `define IMULDIV_MULDIVREQ_MSG_FUNC_DIVU  3'd2
 `define IMULDIV_MULDIVREQ_MSG_FUNC_REM   3'd3
 `define IMULDIV_MULDIVREQ_MSG_FUNC_REMU  3'd4
-
+// Lab2 message
+`define IMULDIV_MULDIVREQ_MSG_FUNC_MULH   3'd5
+`define IMULDIV_MULDIVREQ_MSG_FUNC_MULHU   3'd6
+`define IMULDIV_MULDIVREQ_MSG_FUNC_MULHSU   3'd7
 `define IMULDIV_MULDIVREQ_MSG_A_SZ       32
 `define IMULDIV_MULDIVREQ_MSG_B_SZ       32
 
@@ -111,6 +114,10 @@ module imuldiv_MulDivReqMsgToStr
   localparam divu  = `IMULDIV_MULDIVREQ_MSG_FUNC_DIVU;
   localparam rem   = `IMULDIV_MULDIVREQ_MSG_FUNC_REM;
   localparam remu  = `IMULDIV_MULDIVREQ_MSG_FUNC_REMU;
+  // Lab2
+  localparam mulh   = `IMULDIV_MULDIVREQ_MSG_FUNC_MULH;
+  localparam mulhu   = `IMULDIV_MULDIVREQ_MSG_FUNC_MULHU;
+  localparam mulhsu   = `IMULDIV_MULDIVREQ_MSG_FUNC_MULHSU;
 
   // Full string sized for 20 characters
 
@@ -126,6 +133,9 @@ module imuldiv_MulDivReqMsgToStr
         divu    : $sformat( full_str, "divu %d, %d", a, b );
         rem     : $sformat( full_str, "rem  %d, %d", a, b );
         remu    : $sformat( full_str, "remu %d, %d", a, b );
+        mulh    : $sformat( full_str, "mulh  %d, %d", a, b );
+        mulhu   : $sformat( full_str, "mulhu  %d, %d", a, b );
+        mulhsu  : $sformat( full_str, "mulhsu  %d, %d", a, b );
         default : $sformat( full_str, "undefined func" );
       endcase
     end
@@ -146,6 +156,9 @@ module imuldiv_MulDivReqMsgToStr
         divu    : $sformat( tiny_str, "/u"  );
         rem     : $sformat( tiny_str, "%% " );
         remu    : $sformat( tiny_str, "%%u" );
+        mulh    : $sformat( tiny_str, "*h"  );
+        mulhu   : $sformat( tiny_str, "*u"  );
+        mulhsu  : $sformat( tiny_str, "*s"  );
         default : $sformat( tiny_str, "??"  );
       endcase
     end
