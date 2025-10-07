@@ -222,7 +222,8 @@ module riscv_CoreDpath
 
   // wdata with bypassing
 
-  wire [31:0] wdata_Dhl = rf_rdata1_Dhl;
+  // wdata with bypassing
+  wire [31:0] wdata_Dhl = rf_rdata1_byp_Dhl;
 
   //----------------------------------------------------------------------
   // X <- D
