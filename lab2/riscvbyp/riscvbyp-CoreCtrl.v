@@ -740,8 +740,9 @@ module riscv_CoreCtrl
   wire squash_Mhl = 1'b0;
 
   // Stall in M if memory response is not returned for a valid request
-
-  wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl && !dmemresp_val );
+  // Don't wait for response for store message: solve rand timeout
+  wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl
+                        && is_load_Mhl && !dmemresp_val );
   wire stall_imem_Mhl = ( !reset && imemreq_val_Fhl && inst_val_Fhl && !imemresp_val );
 
   // Aggregate Stall Signal
