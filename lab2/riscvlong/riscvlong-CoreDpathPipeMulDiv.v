@@ -20,8 +20,11 @@ module riscv_CoreDpathPipeMulDiv
 
   output [63:0] muldivresp_msg_result,
   output        muldivresp_val,
-  input         muldivresp_rdy
-
+  input         muldivresp_rdy,
+  input         stall_Xhl,
+  input         stall_Mhl,
+  input         stall_X2hl,
+  input         stall_X3hl
 );
 
   // Set request ready if not stalled
@@ -117,7 +120,15 @@ module riscv_CoreDpathPipeMulDiv
   wire [31:0] remainder
     = ( a_reg[31] ) ? ( ~remainder_raw + 1'b1 )
     :                 remainder_raw;
-
+  //----------------------------------------------------------------------
+  // mulh, mulhu, mulhsu
+  //----------------------------------------------------------------------
+  // signed × signed
+  wire signed [63:0] h = $signed(a_reg) * $signed(b_reg);
+  // unsigned × unsigned
+  wire [63:0] hu = a_reg * b_reg;
+  // signed × unsigned
+  wire signed [63:0] hsu = $signed(a_reg) * $unsigned(b_reg);
   // Result mux
 
   wire [63:0] result0
@@ -126,8 +137,11 @@ module riscv_CoreDpathPipeMulDiv
     : ( fn_reg == `IMULDIV_MULDIVREQ_MSG_FUNC_DIVU ) ? { remainderu, quotientu }
     : ( fn_reg == `IMULDIV_MULDIVREQ_MSG_FUNC_REM  ) ? { remainder, quotient }
     : ( fn_reg == `IMULDIV_MULDIVREQ_MSG_FUNC_REMU ) ? { remainderu, quotientu }
+    : ( fn_reg == `IMULDIV_MULDIVREQ_MSG_FUNC_MULH   ) ? {32'b0, h[63:32] }
+    : ( fn_reg == `IMULDIV_MULDIVREQ_MSG_FUNC_MULHU  ) ? {32'b0, hu[63:32] }
+    : ( fn_reg == `IMULDIV_MULDIVREQ_MSG_FUNC_MULHSU ) ? {32'b0, hsu[63:32]}
     :                                                  32'bx;
-
+  
   //----------------------------------------------------------------------
   // Dummy Pipeline Stages
   //----------------------------------------------------------------------

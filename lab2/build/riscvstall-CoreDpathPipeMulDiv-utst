@@ -1,0 +1,225 @@
+#! /usr/bin/vvp
+:ivl_version "12.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/system.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2005_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/va_math.vpi";
+S_0x56e66d22af00 .scope module, "imuldiv_MulDivReqMsgFromBits" "imuldiv_MulDivReqMsgFromBits" 2 75;
+ .timescale 0 0;
+    .port_info 0 /INPUT 67 "bits";
+    .port_info 1 /OUTPUT 3 "func";
+    .port_info 2 /OUTPUT 32 "a";
+    .port_info 3 /OUTPUT 32 "b";
+v0x56e66d1ff7b0_0 .net "a", 31 0, L_0x56e66d25beb0;  1 drivers
+v0x56e66d25ae00_0 .net "b", 31 0, L_0x56e66d25bfd0;  1 drivers
+o0x7c27c6af1078 .functor BUFZ 67, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x56e66d25aee0_0 .net "bits", 66 0, o0x7c27c6af1078;  0 drivers
+v0x56e66d25afa0_0 .net "func", 2 0, L_0x56e66d25bde0;  1 drivers
+L_0x56e66d25bde0 .part o0x7c27c6af1078, 64, 3;
+L_0x56e66d25beb0 .part o0x7c27c6af1078, 32, 32;
+L_0x56e66d25bfd0 .part o0x7c27c6af1078, 0, 32;
+S_0x56e66d1ff490 .scope module, "imuldiv_MulDivReqMsgToBits" "imuldiv_MulDivReqMsgToBits" 2 52;
+ .timescale 0 0;
+    .port_info 0 /INPUT 3 "func";
+    .port_info 1 /INPUT 32 "a";
+    .port_info 2 /INPUT 32 "b";
+    .port_info 3 /OUTPUT 67 "bits";
+o0x7c27c6af12b8 .functor BUFZ 3, C4<zzz>; HiZ drive
+L_0x56e66d2271c0 .functor BUFZ 3, o0x7c27c6af12b8, C4<000>, C4<000>, C4<000>;
+o0x7c27c6af1228 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+L_0x56e66d25c0d0 .functor BUFZ 32, o0x7c27c6af1228, C4<00000000000000000000000000000000>, C4<00000000000000000000000000000000>, C4<00000000000000000000000000000000>;
+o0x7c27c6af1258 .functor BUFZ 32, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+L_0x56e66d25c370 .functor BUFZ 32, o0x7c27c6af1258, C4<00000000000000000000000000000000>, C4<00000000000000000000000000000000>, C4<00000000000000000000000000000000>;
+v0x56e66d25b100_0 .net *"_ivl_12", 31 0, L_0x56e66d25c370;  1 drivers
+v0x56e66d25b200_0 .net *"_ivl_3", 2 0, L_0x56e66d2271c0;  1 drivers
+v0x56e66d25b2e0_0 .net *"_ivl_7", 31 0, L_0x56e66d25c0d0;  1 drivers
+v0x56e66d25b3a0_0 .net "a", 31 0, o0x7c27c6af1228;  0 drivers
+v0x56e66d25b480_0 .net "b", 31 0, o0x7c27c6af1258;  0 drivers
+v0x56e66d25b560_0 .net "bits", 66 0, L_0x56e66d25c1a0;  1 drivers
+v0x56e66d25b640_0 .net "func", 2 0, o0x7c27c6af12b8;  0 drivers
+L_0x56e66d25c1a0 .concat8 [ 32 32 3 0], L_0x56e66d25c370, L_0x56e66d25c0d0, L_0x56e66d2271c0;
+S_0x56e66d1ff620 .scope module, "imuldiv_MulDivReqMsgToStr" "imuldiv_MulDivReqMsgToStr" 2 99;
+ .timescale 0 0;
+    .port_info 0 /INPUT 67 "msg";
+P_0x56e66d23bcd0 .param/l "div" 1 2 113, C4<001>;
+P_0x56e66d23bd10 .param/l "divu" 1 2 114, C4<010>;
+P_0x56e66d23bd50 .param/l "mul" 1 2 112, C4<000>;
+P_0x56e66d23bd90 .param/l "mulh" 1 2 118, C4<101>;
+P_0x56e66d23bdd0 .param/l "mulhsu" 1 2 120, C4<111>;
+P_0x56e66d23be10 .param/l "mulhu" 1 2 119, C4<110>;
+P_0x56e66d23be50 .param/l "rem" 1 2 115, C4<011>;
+P_0x56e66d23be90 .param/l "remu" 1 2 116, C4<100>;
+v0x56e66d25b810_0 .net "a", 31 0, L_0x56e66d25c4d0;  1 drivers
+v0x56e66d25b910_0 .net "b", 31 0, L_0x56e66d25c5f0;  1 drivers
+v0x56e66d25b9f0_0 .var "full_str", 159 0;
+v0x56e66d25bab0_0 .net "func", 2 0, L_0x56e66d25c430;  1 drivers
+o0x7c27c6af1468 .functor BUFZ 67, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x56e66d25bb90_0 .net "msg", 66 0, o0x7c27c6af1468;  0 drivers
+v0x56e66d25bcc0_0 .var "tiny_str", 15 0;
+E_0x56e66d23b100 .event anyedge, v0x56e66d25bb90_0, v0x56e66d25bcc0_0, v0x56e66d25bab0_0;
+E_0x56e66d23a100/0 .event anyedge, v0x56e66d25bb90_0, v0x56e66d25b9f0_0, v0x56e66d25bab0_0, v0x56e66d25b810_0;
+E_0x56e66d23a100/1 .event anyedge, v0x56e66d25b910_0;
+E_0x56e66d23a100 .event/or E_0x56e66d23a100/0, E_0x56e66d23a100/1;
+L_0x56e66d25c430 .part o0x7c27c6af1468, 64, 3;
+L_0x56e66d25c4d0 .part o0x7c27c6af1468, 32, 32;
+L_0x56e66d25c5f0 .part o0x7c27c6af1468, 0, 32;
+    .scope S_0x56e66d1ff620;
+T_0 ;
+    %wait E_0x56e66d23a100;
+    %load/vec4 v0x56e66d25bb90_0;
+    %pushi/vec4 4294967295, 4294967295, 32;
+    %concati/vec4 4294967295, 4294967295, 32;
+    %concati/vec4 7, 7, 3;
+    %cmp/e;
+    %jmp/0xz  T_0.0, 6;
+    %vpi_call 2 128 "$sformat", v0x56e66d25b9f0_0, "x            " {0 0 0};
+    %jmp T_0.1;
+T_0.0 ;
+    %load/vec4 v0x56e66d25bab0_0;
+    %dup/vec4;
+    %pushi/vec4 0, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.2, 6;
+    %dup/vec4;
+    %pushi/vec4 1, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.3, 6;
+    %dup/vec4;
+    %pushi/vec4 2, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.4, 6;
+    %dup/vec4;
+    %pushi/vec4 3, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.5, 6;
+    %dup/vec4;
+    %pushi/vec4 4, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.6, 6;
+    %dup/vec4;
+    %pushi/vec4 5, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.7, 6;
+    %dup/vec4;
+    %pushi/vec4 6, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.8, 6;
+    %dup/vec4;
+    %pushi/vec4 7, 0, 3;
+    %cmp/u;
+    %jmp/1 T_0.9, 6;
+    %vpi_call 2 139 "$sformat", v0x56e66d25b9f0_0, "undefined func" {0 0 0};
+    %jmp T_0.11;
+T_0.2 ;
+    %vpi_call 2 131 "$sformat", v0x56e66d25b9f0_0, "mul  %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.3 ;
+    %vpi_call 2 132 "$sformat", v0x56e66d25b9f0_0, "div  %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.4 ;
+    %vpi_call 2 133 "$sformat", v0x56e66d25b9f0_0, "divu %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.5 ;
+    %vpi_call 2 134 "$sformat", v0x56e66d25b9f0_0, "rem  %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.6 ;
+    %vpi_call 2 135 "$sformat", v0x56e66d25b9f0_0, "remu %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.7 ;
+    %vpi_call 2 136 "$sformat", v0x56e66d25b9f0_0, "mulh  %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.8 ;
+    %vpi_call 2 137 "$sformat", v0x56e66d25b9f0_0, "mulhu  %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.9 ;
+    %vpi_call 2 138 "$sformat", v0x56e66d25b9f0_0, "mulhsu  %d, %d", v0x56e66d25b810_0, v0x56e66d25b910_0 {0 0 0};
+    %jmp T_0.11;
+T_0.11 ;
+    %pop/vec4 1;
+T_0.1 ;
+    %jmp T_0;
+    .thread T_0, $push;
+    .scope S_0x56e66d1ff620;
+T_1 ;
+    %wait E_0x56e66d23b100;
+    %load/vec4 v0x56e66d25bb90_0;
+    %pushi/vec4 4294967295, 4294967295, 32;
+    %concati/vec4 4294967295, 4294967295, 32;
+    %concati/vec4 7, 7, 3;
+    %cmp/e;
+    %jmp/0xz  T_1.0, 6;
+    %vpi_call 2 151 "$sformat", v0x56e66d25bcc0_0, "x " {0 0 0};
+    %jmp T_1.1;
+T_1.0 ;
+    %load/vec4 v0x56e66d25bab0_0;
+    %dup/vec4;
+    %pushi/vec4 0, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.2, 6;
+    %dup/vec4;
+    %pushi/vec4 1, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.3, 6;
+    %dup/vec4;
+    %pushi/vec4 2, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.4, 6;
+    %dup/vec4;
+    %pushi/vec4 3, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.5, 6;
+    %dup/vec4;
+    %pushi/vec4 4, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.6, 6;
+    %dup/vec4;
+    %pushi/vec4 5, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.7, 6;
+    %dup/vec4;
+    %pushi/vec4 6, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.8, 6;
+    %dup/vec4;
+    %pushi/vec4 7, 0, 3;
+    %cmp/u;
+    %jmp/1 T_1.9, 6;
+    %vpi_call 2 162 "$sformat", v0x56e66d25bcc0_0, "??" {0 0 0};
+    %jmp T_1.11;
+T_1.2 ;
+    %vpi_call 2 154 "$sformat", v0x56e66d25bcc0_0, "* " {0 0 0};
+    %jmp T_1.11;
+T_1.3 ;
+    %vpi_call 2 155 "$sformat", v0x56e66d25bcc0_0, "/ " {0 0 0};
+    %jmp T_1.11;
+T_1.4 ;
+    %vpi_call 2 156 "$sformat", v0x56e66d25bcc0_0, "/u" {0 0 0};
+    %jmp T_1.11;
+T_1.5 ;
+    %vpi_call 2 157 "$sformat", v0x56e66d25bcc0_0, "%% " {0 0 0};
+    %jmp T_1.11;
+T_1.6 ;
+    %vpi_call 2 158 "$sformat", v0x56e66d25bcc0_0, "%%u" {0 0 0};
+    %jmp T_1.11;
+T_1.7 ;
+    %vpi_call 2 159 "$sformat", v0x56e66d25bcc0_0, "*h" {0 0 0};
+    %jmp T_1.11;
+T_1.8 ;
+    %vpi_call 2 160 "$sformat", v0x56e66d25bcc0_0, "*u" {0 0 0};
+    %jmp T_1.11;
+T_1.9 ;
+    %vpi_call 2 161 "$sformat", v0x56e66d25bcc0_0, "*s" {0 0 0};
+    %jmp T_1.11;
+T_1.11 ;
+    %pop/vec4 1;
+T_1.1 ;
+    %jmp T_1;
+    .thread T_1, $push;
+# The file index is used to find the file name in the following table.
+:file_names 3;
+    "N/A";
+    "<interactive>";
+    "../imuldiv/imuldiv-MulDivReqMsg.v";

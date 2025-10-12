@@ -496,7 +496,11 @@ module riscv_CoreDpath
     // Ouput form X3 stage
     .muldivresp_msg_result (muldivresp_msg_result_X3hl),
     .muldivresp_val        (muldivresp_val),
-    .muldivresp_rdy        (muldivresp_rdy)
+    .muldivresp_rdy        (muldivresp_rdy),
+    .stall_Xhl(stall_Xhl),
+    .stall_Mhl(stall_Mhl),
+    .stall_X2hl(stall_X2hl),
+    .stall_X3hl(stall_X3hl)
   );
 
 endmodule

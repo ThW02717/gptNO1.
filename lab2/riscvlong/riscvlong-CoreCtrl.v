@@ -628,10 +628,9 @@ module riscv_CoreCtrl
   
   // Stall for load-use hazards 
   // Stall for load-use hazards 
-  wire stall_ld_use_Dhl = inst_val_Dhl && inst_val_Xhl && is_load_Xhl && (
-                              (rs1_en_Dhl && (rs1_addr_Dhl == rf_waddr_Xhl) && (rf_waddr_Xhl != 5'd0)) ||
-                              (rs2_en_Dhl && (rs2_addr_Dhl == rf_waddr_Xhl) && (rf_waddr_Xhl != 5'd0))
-                            );
+  wire stall_ld_use_Dhl = inst_val_Dhl &&
+                        ((inst_val_Xhl && is_load_Xhl && dep_X) ||
+                         (inst_val_Mhl && is_load_Mhl && dep_M));
 
   
   
@@ -812,9 +811,9 @@ module riscv_CoreCtrl
   wire squash_Mhl = 1'b0;
 
   // Stall in M if memory response is not returned for a valid request
-  wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl && !dmemresp_val );
+  wire stall_dmem_Mhl = 1'b0;
   wire stall_imem_Mhl = ( !reset && imemreq_val_Fhl && inst_val_Fhl && !imemresp_val );
-  assign stall_Mhl = ( stall_X2hl || stall_imem_Mhl || stall_dmem_Mhl  );
+  assign stall_Mhl = ( stall_X2hl || stall_imem_Mhl );
   // Next bubble bit
   wire bubble_sel_Mhl  = ( squash_Mhl || stall_Mhl );
   wire bubble_next_Mhl = ( !bubble_sel_Mhl ) ? bubble_Mhl
@@ -878,10 +877,7 @@ module riscv_CoreCtrl
   wire inst_val_X3hl = ( !bubble_X3hl && !squash_X3hl );
   wire squash_X3hl = 1'b0;
   assign stall_X3hl = stall_Whl;
-  assign muldivresp_rdy = !((inst_val_Xhl  && stall_Xhl  && is_md_Xhl) ||
-                            (inst_val_Mhl  && stall_Mhl  && is_md_Mhl) ||
-                            (inst_val_X2hl && stall_X2hl && is_md_X2hl) ||
-                            (inst_val_X3hl && stall_X3hl && is_md_X3hl) );
+  assign muldivresp_rdy = !stall_X3hl;
   // Pipeline Controls
 
   always @ ( posedge clk ) begin
