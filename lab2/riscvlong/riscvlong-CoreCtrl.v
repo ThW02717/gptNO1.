@@ -484,7 +484,7 @@ module riscv_CoreCtrl
 
   // Execute Mux Select
 
-  wire execute_mux_sel_Dhl = cs[`RISCV_INST_MSG_EX_SEL];
+  wire execute_mux_sel_Dhl = cs[`RISCV_INST_MSG_MULDIV_EN];
 
   // Memory Controls
 
@@ -628,7 +628,10 @@ module riscv_CoreCtrl
   
   // Stall for load-use hazards 
   // Stall for load-use hazards 
-  wire stall_ld_use_Dhl = (inst_val_Dhl && inst_val_Xhl && is_load_Xhl && dep_X )|| (inst_val_Dhl && inst_val_Mhl && is_load_Mhl && dep_M);
+  wire stall_ld_use_Dhl = inst_val_Dhl && inst_val_Xhl && is_load_Xhl && (
+                              (rs1_en_Dhl && (rs1_addr_Dhl == rf_waddr_Xhl) && (rf_waddr_Xhl != 5'd0)) ||
+                              (rs2_en_Dhl && (rs2_addr_Dhl == rf_waddr_Xhl) && (rf_waddr_Xhl != 5'd0))
+                            );
 
   
   
@@ -809,12 +812,8 @@ module riscv_CoreCtrl
   wire squash_Mhl = 1'b0;
 
   // Stall in M if memory response is not returned for a valid request
-  
-
+  wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl && !dmemresp_val );
   wire stall_imem_Mhl = ( !reset && imemreq_val_Fhl && inst_val_Fhl && !imemresp_val );
-  // Don't wait for response for store message: solve rand timeout
-  wire stall_dmem_Mhl = ( !reset && inst_val_Mhl  && dmemreq_val_Mhl && !dmemresp_val );
-  // Aggregate Stall Signal
   assign stall_Mhl = ( stall_X2hl || stall_imem_Mhl || stall_dmem_Mhl  );
   // Next bubble bit
   wire bubble_sel_Mhl  = ( squash_Mhl || stall_Mhl );
