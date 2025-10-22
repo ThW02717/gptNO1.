@@ -161,14 +161,13 @@ module riscv_CoreDpath
   assign branch_targ_Dhl = pc_Dhl + imm_sb_Dhl;
   assign jump_targ_Dhl   = pc_Dhl + imm_uj_Dhl;
 
-  // Register file
 
   wire [ 4:0] rf_raddr0_Dhl = inst_rs1_Dhl;
   wire [31:0] rf_rdata0_Dhl;
   wire [ 4:0] rf_raddr1_Dhl = inst_rs2_Dhl;
   wire [31:0] rf_rdata1_Dhl;
-  // === Bypass multiplexer logic ===
-  // Each src can choose from RF / X / M / W
+  // Bypass multiplexer logic
+  // Each rs1 rs2 can choose from RF / X / M / W
   wire [31:0] rf_rdata0_byp_Dhl =
     ( rs1_byp_sel_Dhl == 2'd0 ) ? rf_rdata0_Dhl :
     ( rs1_byp_sel_Dhl == 2'd1 ) ? execute_mux_out_Xhl :

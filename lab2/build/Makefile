@@ -94,6 +94,7 @@ tests = \
   riscv-mulh.vmh \
   riscv-mulhu.vmh \
   riscv-mulhsu.vmh \
+  riscv-custom.vmh \
 
 riscvstall_rtl_sim = riscvstall-sim
 riscvstall_rtl_rand_sim = riscvstall-randdelay-sim

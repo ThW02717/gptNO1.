@@ -49,6 +49,7 @@ riscv_srcs += \
   riscv-mulh.S \
   riscv-mulhu.S \
   riscv-mulhsu.S \
+  riscv-custom.S \
   # TODO: riscv-mulh.S 
   # TODO: riscv-mulhu.S 
   # TODO: riscv-mulhsu.S 

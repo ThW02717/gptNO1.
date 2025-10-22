@@ -53,8 +53,8 @@ module riscv_CoreCtrl
   output              stall_Whl,
 
   // Bypassign Signal
-  output reg  [1:0]   rs1_byp_sel_Dhl, // 00=RF,01=X,10=M,11=W
-  output reg  [1:0]   rs2_byp_sel_Dhl, // 00=RF,01=X,10=M,11=W
+  output reg  [1:0]   rs1_byp_sel_Dhl, 
+  output reg  [1:0]   rs2_byp_sel_Dhl, 
   // Control Signals (dpath->ctrl)
 
   input               branch_cond_eq_Xhl,
@@ -510,8 +510,9 @@ module riscv_CoreCtrl
   wire stall_muldiv_Dhl = (muldivreq_val_Dhl && inst_val_Dhl && !muldivreq_rdy);
 
   // Stall for data hazards if either of the operand read addresses are
+  // // Stall for data hazards if either of the operand read addresses are
   // the same as the write addresses of instruction later in the pipeline
-
+  // Bypassing signal in pipeline
   wire rs1_X_byp_Dhl = rs1_en_Dhl && inst_val_Dhl && inst_val_Xhl &&
                        rf_wen_Xhl && (rs1_addr_Dhl == rf_waddr_Xhl) && (rf_waddr_Xhl != 5'd0);
   wire rs1_M_byp_Dhl = rs1_en_Dhl && inst_val_Dhl && inst_val_Mhl &&
@@ -525,10 +526,19 @@ module riscv_CoreCtrl
                        rf_wen_Mhl && (rs2_addr_Dhl == rf_waddr_Mhl) && (rf_waddr_Mhl != 5'd0);
   wire rs2_W_byp_Dhl = rs2_en_Dhl && inst_val_Dhl && inst_val_Whl &&
                        rf_wen_Whl && (rs2_addr_Dhl == rf_waddr_Whl) && (rf_waddr_Whl != 5'd0);
-  // === 新增：is_load pipeline 標記 ===
-  reg is_load_Xhl_d1;
+
+  
+
+
+  ////////////////////////////load use hzd stall///////////////////////////////////////
+  // is_load  load use
+  reg is_load;// Aggregate
+  // wire byp_from_M, byp_from_
+
   wire is_load_Dhl = (cs[`RISCV_INST_MSG_MEM_REQ] == 2'd1); // ld
   reg  is_load_Xhl, is_load_Mhl;
+  // init
+  // is load signal along pipeline
   always @(posedge clk) begin
     if (reset) begin
       is_load_Xhl <= 1'b0;
@@ -538,24 +548,9 @@ module riscv_CoreCtrl
       if (!stall_Mhl) is_load_Mhl <= is_load_Xhl;
     end
   end
-  // === 新增：產生 bypass 選擇控制（安全版） ===
-  always @(*) begin
-    rs1_byp_sel_Dhl = 2'b00;  // default: read from RF
-    if (rs1_X_byp_Dhl)      rs1_byp_sel_Dhl = 2'b01;
-    else if (rs1_M_byp_Dhl) rs1_byp_sel_Dhl = 2'b10;
-    else if (rs1_W_byp_Dhl) rs1_byp_sel_Dhl = 2'b11;
-  end
 
-  always @(*) begin
-    rs2_byp_sel_Dhl = 2'b00;  // default: read from RF
-    if (rs2_X_byp_Dhl)      rs2_byp_sel_Dhl = 2'b01;
-    else if (rs2_M_byp_Dhl) rs2_byp_sel_Dhl = 2'b10;
-    else if (rs2_W_byp_Dhl) rs2_byp_sel_Dhl = 2'b11;
-  end
-
-  
-  // === 修改：Stall for load-use hazards only ===
-  // === 修正版：Stall for load-use hazards (X/M stages) ===
+  //  load-use hazards 
+  //Stall for load-use hazards (X/M stages)
   wire stall_load_use_Dhl = inst_val_Dhl && (
     (inst_val_Xhl && is_load_Xhl &&
       ((rs1_en_Dhl && (rs1_addr_Dhl == rf_waddr_Xhl)) ||
@@ -568,7 +563,22 @@ module riscv_CoreCtrl
   );
 
   assign stall_Dhl = stall_Xhl || stall_muldiv_Dhl || stall_load_use_Dhl;
+  ////////////////////////////load use hzd stall///////////////////////////////////////
+  //////data hzd byp////
+  always @(*) begin
+    rs1_byp_sel_Dhl = 2'd0;  
+    if (rs1_X_byp_Dhl)      rs1_byp_sel_Dhl = 2'd1;
+    else if (rs1_M_byp_Dhl) rs1_byp_sel_Dhl = 2'd2;
+    else if (rs1_W_byp_Dhl) rs1_byp_sel_Dhl = 2'd3;
+  end
 
+  always @(*) begin
+    rs2_byp_sel_Dhl = 2'd0;  
+    if (rs2_X_byp_Dhl)      rs2_byp_sel_Dhl = 2'd1;
+    else if (rs2_M_byp_Dhl) rs2_byp_sel_Dhl = 2'd2;
+    else if (rs2_W_byp_Dhl) rs2_byp_sel_Dhl = 2'd3;
+  end
+  //////data hzd byp////
   // Next bubble bit
   // No need modified
   wire bubble_sel_Dhl  = ( squash_Dhl || stall_Dhl );
@@ -732,17 +742,16 @@ module riscv_CoreCtrl
   // Data memory queue control signals
 
   assign dmemresp_queue_en_Mhl = ( stall_Mhl && dmemresp_val );
-  wire   dmemresp_queue_val_next_Mhl
-    = stall_Mhl && ( dmemresp_val || dmemresp_queue_val_Mhl );
+  wire   dmemresp_queue_val_next_Mhl = stall_Mhl && ( dmemresp_val || dmemresp_queue_val_Mhl );
 
   // Dummy Squash Signal
 
   wire squash_Mhl = 1'b0;
 
-  // Stall in M if memory response is not returned for a valid request
-  // Don't wait for response for store message: solve rand timeout
-  wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl
-                        && is_load_Mhl && !dmemresp_val );
+  //wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl && !dmemresp_val );
+  // random delay bug: temp 
+  wire stall_dmem_Mhl = ( !reset && dmemreq_val_Mhl && inst_val_Mhl && is_load_Mhl && !dmemresp_val );
+  
   wire stall_imem_Mhl = ( !reset && imemreq_val_Fhl && inst_val_Fhl && !imemresp_val );
 
   // Aggregate Stall Signal
