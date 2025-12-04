@@ -304,17 +304,7 @@ vc_RAM_rst_1w1r_pf #(
       end
     end
   end
-  // ---------------- Debug: VC probe ----------------
-  // 用 +cachedbg_vc_probe 開啟
-  always @(posedge clk) begin
-    if (!reset && $test$plusargs("cachedbg_vc_probe")) begin
-      // CHECK_VICTIM = 4'd2
-      if (state == 4'd2) begin
-        $display("[VC-PROBE %0t] addr=%h key=%h | vc_hit=%b",
-                 $time, vc_refill_addr, vc_refill_addr[31:6], vc_hit);
-      end
-    end
-  end
+
 endmodule
 
 //------------------------------------------------------------------------
@@ -369,7 +359,7 @@ module riscv_CacheAltDpath (
     input  [22:0]          tag1_rdata,
     output [`BLK_SIZE-1:0] data1_wdata,
     input  [`BLK_SIZE-1:0] data1_rdata,
-    output [31:0]  reg    vc_refill_addr
+    output [31:0]      vc_refill_addr
 );
 
     // ---------------- Unpack MemReq ----------------
@@ -467,7 +457,7 @@ module riscv_CacheAltDpath (
 
     reg [31:0] read_data_hit;
     reg [31:0] read_data_miss;
-    reg [31:0] read_data_vc;
+
     reg [31:0] raw_word;
     reg [31:0] final_read_data;
     reg [7:0]  load_byte;
@@ -475,7 +465,7 @@ module riscv_CacheAltDpath (
 
     always @(*) begin
         read_data_hit = data_block_hit[word_select * 32 +: 32];
-        read_data_vc  = vc_read_data[word_select * 32 +: 32];
+      
     end
 
     reg [`BLK_SIZE-1:0] refill_data;
@@ -622,7 +612,14 @@ module riscv_CacheAltDpath (
             end
         end
     end
-    
+    always @(posedge clk) begin
+    if (!reset && $test$plusargs("cachedbg")) begin
+        if (vc_hit && write_data_mux_sel == 2'd2) begin
+        $display("[VC->L1] time=%0t idx=%0d way=%0d word0=%08x",
+                $time, index, way_sel, vc_read_data[31:0]);
+        end
+    end
+    end
 endmodule
 
 //------------------------------------------------------------------------
@@ -673,13 +670,14 @@ module riscv_CacheAltCtrl (
 
     localparam IDLE          = 4'd0;
     localparam READ_CACHE    = 4'd1;
-    localparam CHECK_VICTIM  = 4'd2;
-    localparam READ_MEM_REQ  = 4'd3;
-    localparam READ_MEM_RESP = 4'd4;
-    localparam VC_EVICT_REQ  = 4'd5;
-    localparam VC_EVICT_RESP = 4'd6;
-    localparam UPDATE_CACHE  = 4'd7;
-    localparam DONE          = 4'd8;
+    localparam VC_PROBE      = 4'd2; 
+    localparam VC_RESP       = 4'd3; 
+    localparam READ_MEM_REQ  = 4'd4;
+    localparam READ_MEM_RESP = 4'd5;
+    localparam VC_EVICT_REQ  = 4'd6;
+    localparam VC_EVICT_RESP = 4'd7;
+    localparam UPDATE_CACHE  = 4'd8;
+    localparam DONE          = 4'd9;
 
     reg [3:0] curr_state, next_state;
     assign state = curr_state[3:0];
@@ -692,83 +690,59 @@ module riscv_CacheAltCtrl (
     end
 
     // State Transitions
+    // State Transitions
     always @(*) begin
-        next_state = curr_state;
-        case (curr_state)
-            IDLE: begin
-                if (memreq_val)
-                    next_state = READ_CACHE;
-            end
+    next_state = curr_state;
+    case (curr_state)
+        IDLE: begin
+        if (memreq_val)
+            next_state = READ_CACHE;
+        end
 
-            READ_CACHE: begin
-                if (hit) begin
-                    if (type)
-                        next_state = UPDATE_CACHE;   // write hit
-                    else begin
-                        if (memresp_rdy)
-                            next_state = (memreq_val) ? READ_CACHE : IDLE;
-                        else
-                            next_state = READ_CACHE;
-                    end
-                end else begin
-                    // Miss -> 先去 Victim Cache 問
-                    next_state = CHECK_VICTIM;
-                end
+        READ_CACHE: begin
+        if (hit) begin
+            if (type) next_state = UPDATE_CACHE;   // write hit
+            else begin
+            if (memresp_rdy) next_state = (memreq_val ? READ_CACHE : IDLE);
+            else             next_state = READ_CACHE;
             end
+        end
+        else begin
+            // miss → 先打一拍 VC_PROBE
+            next_state = VC_PROBE;
+        end
+        end
 
-            CHECK_VICTIM: begin
-                if (vc_hit) begin
-                    // VC 有 -> swap
-                    next_state = UPDATE_CACHE;
-                end else begin
-                    // VC 沒有 -> 去 DRAM refill
-                    next_state = READ_MEM_REQ;
-                end
-            end
+        VC_PROBE: begin
+        // 只打一拍查詢，下一拍再讀 vc_hit
+        next_state = VC_RESP;
+        end
 
-            READ_MEM_REQ: begin
-                if (cachereq_rdy)
-                    next_state = READ_MEM_RESP;
-            end
+        VC_RESP: begin
+        // 這拍讀 vc_hit，決定走 swap 還是 DRAM refill
+        if (vc_hit_hold) next_state = UPDATE_CACHE;
+        else             next_state = READ_MEM_REQ;
+        end
 
-            READ_MEM_RESP: begin
-                if (cacheresp_val) begin
-                    if (refill_counter < 5'd15)
-                        next_state = READ_MEM_REQ;
-                    else
-                        next_state = UPDATE_CACHE;
-                end
-            end
+        READ_MEM_REQ:  if (cachereq_rdy) next_state = READ_MEM_RESP;
+        READ_MEM_RESP: if (cacheresp_val) begin
+                        if (refill_counter < 5'd15) next_state = READ_MEM_REQ;
+                        else                        next_state = UPDATE_CACHE;
+                        end
+        VC_EVICT_REQ:  if (cachereq_rdy) next_state = VC_EVICT_RESP;
+        VC_EVICT_RESP: if (cachereq_rdy) begin
+                        if (refill_counter < 5'd15) next_state = VC_EVICT_REQ;
+                        else                        next_state = DONE;
+                        end
+        UPDATE_CACHE:  next_state = DONE;
 
-            VC_EVICT_REQ: begin
-                if (cachereq_rdy)
-                    next_state = VC_EVICT_RESP;
-            end
+        DONE: begin
+        if (vc_mem_req_val)      next_state = VC_EVICT_REQ;
+        else if (memresp_rdy)    next_state = IDLE;
+        end
 
-            VC_EVICT_RESP: begin
-                if (cachereq_rdy) begin
-                     if (refill_counter < 5'd15)
-                         next_state = VC_EVICT_REQ;
-                     else
-                         next_state = DONE;
-                end
-            end
-
-            UPDATE_CACHE: begin
-                next_state = DONE;
-            end
-
-            DONE: begin
-                // 看 Victim Cache 要不要把東西寫回 DRAM
-                if (vc_mem_req_val) begin
-                    next_state = VC_EVICT_REQ;
-                end else if (memresp_rdy) begin
-                    next_state = IDLE;
-                end
-            end
-
-            default: next_state = IDLE;
-        endcase
+        default: next_state = IDLE;
+    endcase
     end
 
     // Output Logic
@@ -776,7 +750,20 @@ module riscv_CacheAltCtrl (
     reg memresp_val_reg;
     reg cachereq_val_reg;
     reg cacheresp_rdy_reg;
+    reg vc_hit_hold;
 
+    always @(posedge clk) begin
+    if (reset)
+        vc_hit_hold <= 1'b0;
+    else begin
+        if (curr_state == VC_PROBE)
+      vc_hit_hold <= vc_hit;
+    else if (curr_state == DONE && memresp_rdy)
+      vc_hit_hold <= 1'b0;
+    else if (curr_state == IDLE && !memreq_val)
+      vc_hit_hold <= 1'b0;
+    end
+    end
     always @(*) begin
         memreq_rdy_reg     = 1'b0;
         memresp_val_reg    = 1'b0;
@@ -797,105 +784,105 @@ module riscv_CacheAltCtrl (
         vc_evict_val       = 1'b0;
         vc_refill_val      = 1'b0;
 
-        // way_sel：hit → 用 hit 的 way；miss → 用 LRU victim
-        if (hit)
-            way_sel = hit1 ? 1'b1 : 1'b0;
-        else
-            way_sel = lru_victim;
+        // way_sel：hit 用 hit way；miss 用 LRU
+        if (hit) way_sel = (hit1 ? 1'b1 : 1'b0);
+        else     way_sel = lru_victim;
 
         case (curr_state)
             IDLE: begin
-                memreq_rdy_reg = 1'b1;
-                memreq_en      = memreq_val;
-                refill_cnt_clr = 1'b1;
+            memreq_rdy_reg = 1'b1;
+            memreq_en      = memreq_val;
+            refill_cnt_clr = 1'b1;
             end
 
             READ_CACHE: begin
-                if (hit) begin
-                    lru_update = 1'b1;
-                    if (!type) begin
-                        // read hit
-                        memresp_val_reg = 1'b1;
-                        memreq_rdy_reg  = memresp_rdy;
-                        memreq_en       = memresp_rdy && memreq_val;
-                    end
-                    // write hit → UPDATE_CACHE 再處理
-                end else begin
-                    // miss
-                    miss           = 1'b1;
-                    refill_cnt_clr = 1'b1;
+            if (hit) begin
+                lru_update = 1'b1;
+                if (!type) begin
+                memresp_val_reg = 1'b1;
+                memreq_rdy_reg  = memresp_rdy;
+                memreq_en       = memresp_rdy && memreq_val;
                 end
             end
+            else begin
+                miss           = 1'b1;
+                refill_cnt_clr = 1'b1;   // 準備 probe/refill
+                // 這拍不拉 vc_refill_val，交給 VC_PROBE
+            end
+            end
 
-            CHECK_VICTIM: begin
-                miss          = 1'b1;
-                vc_refill_val = 1'b1; // 對 VC 發查詢
+            // --- NEW ---
+            VC_PROBE: begin
+            miss          = 1'b1;
+            vc_refill_val = 1'b1;     // 只在這拍拉高
+            end
+
+            // --- NEW ---
+            VC_RESP: begin
+            miss = 1'b1;              // 這拍讀 vc_hit（latched 到 vc_hit_hold）
+            // 不再拉 vc_refill_val
             end
 
             READ_MEM_REQ: begin
-                cachereq_val_reg  = 1'b1; // 向 DRAM 發 read request
-                cacheresp_rdy_reg = 1'b1;
-                miss              = 1'b1;
+            cachereq_val_reg  = 1'b1;
+            cacheresp_rdy_reg = 1'b1;
+            miss              = 1'b1;
             end
 
             READ_MEM_RESP: begin
-                cacheresp_rdy_reg = 1'b1;
-                miss              = 1'b1;
-                if (cacheresp_val)
-                    refill_cnt_en = 1'b1;
+            cacheresp_rdy_reg = 1'b1;
+            miss              = 1'b1;
+            if (cacheresp_val) refill_cnt_en = 1'b1;
             end
 
             VC_EVICT_REQ: begin
-                // Victim Cache 要把一整個 block 寫回 DRAM（16 words 流水）
-                cachereq_val_reg = 1'b1;
-                evict_sel        = 1'b1; // 選 VC 的 addr/data
-                miss             = 1'b1;
+            cachereq_val_reg = 1'b1;
+            evict_sel        = 1'b1;
+            miss             = 1'b1;
             end
 
             VC_EVICT_RESP: begin
-                miss      = 1'b1;
-                evict_sel = 1'b1;
-                if (cachereq_rdy) begin
-                    refill_cnt_en = 1'b1;
-                end
-                if (refill_counter == 5'd15 && cachereq_rdy) begin
-                    refill_cnt_clr = 1'b1;
-                end
+            miss      = 1'b1;
+            evict_sel = 1'b1;
+            if (cachereq_rdy) begin
+                refill_cnt_en = 1'b1;
+            end
+            if (refill_counter == 5'd15 && cachereq_rdy) begin
+                refill_cnt_clr = 1'b1;
+            end
             end
 
             UPDATE_CACHE: begin
-                // 統一在這裡寫回 tag/data，並更新 LRU
-                tag_wen    = 1'b1;
-                data_wen   = 1'b1;
-                lru_update = 1'b1;
+            tag_wen    = 1'b1;
+            data_wen   = 1'b1;
+            lru_update = 1'b1;
 
-                if (refill_counter != 5'd0) begin
-                    // Case 2: 剛從 DRAM refill 完（cache miss）
-                    write_data_mux_sel = 2'd1;
-                    miss               = 1'b1;
-                    // 只有 victim 是有效且 dirty 的，才送到 Victim Cache
-                    vc_evict_val       = victim_dirty;
-
-                end else if (vc_hit) begin
-                    // Case 3: 在 Victim Cache 裡找到，swap
-                    write_data_mux_sel = 2'd2;
-                    miss               = 1'b1;
-                    vc_evict_val       = victim_dirty;
-
-                end else begin
-                    // Case 1: Write Hit（沒有 eviction）
-                    write_data_mux_sel = 2'd0;
-                    miss               = 1'b0;
-                end
+            if (refill_counter != 5'd0) begin
+                // Case A: 剛從 DRAM refill 完
+                write_data_mux_sel = 2'd1;
+                miss               = 1'b1;
+                vc_evict_val       = victim_dirty;
+            end
+            else if (vc_hit_hold) begin
+                // Case B: Victim Cache 命中 → swap
+                write_data_mux_sel = 2'd2;
+                miss               = 1'b1;
+                vc_evict_val       = victim_dirty;
+            end
+            else begin
+                // Case C: Write hit in-place
+                write_data_mux_sel = 2'd0;
+                miss               = 1'b0;
+            end
             end
 
             DONE: begin
-                memresp_val_reg = 1'b1;
-                miss            = 1'b0;
-                refill_cnt_clr  = 1'b1;
+            memresp_val_reg = 1'b1;
+            miss            = 1'b0;
+            refill_cnt_clr  = 1'b1;
             end
         endcase
-    end
+        end
      // ---------------- Debug: UPDATE_CACHE 分類 ----------------
     // 用 +cachedbg_upd 開啟
     always @(posedge clk) begin
@@ -922,14 +909,14 @@ module riscv_CacheAltCtrl (
     assign cacheresp_rdy = cacheresp_rdy_reg;
 
     always @(posedge clk) begin
-        if (!reset && $test$plusargs("cachedbg_ctrl")) begin
-            $display(
-            "[CTRL %0t] state=%0d hit=%b miss=%b vc_hit=%b vc_refill_val=%b vc_mem_req_val=%b | cachereq_val=%b cachereq_rdy=%b cacheresp_val=%b | memresp_val=%b memresp_rdy=%b refill_cnt=%0d",
-            $time, curr_state, hit, miss, vc_hit, vc_refill_val, vc_mem_req_val,
-            cachereq_val, cachereq_rdy, cacheresp_val,
-            memresp_val, memresp_rdy, refill_counter
-            );
-        end
+    if (!reset && $test$plusargs("cachedbg_ctrl")) begin
+        $display(
+        "[CTRL %0t] state=%0d hit=%b miss=%b vc_hit=%b vc_refill_val=%b vc_mem_req_val=%b | cachereq_val=%b cachereq_rdy=%b cacheresp_val=%b | memresp_val=%b memresp_rdy=%b refill_cnt=%0d",
+        $time, curr_state, hit, miss, vc_hit, vc_refill_val, vc_mem_req_val,
+        cachereq_val, cachereq_rdy, cacheresp_val,
+        memresp_val, memresp_rdy, refill_counter
+        );
+    end
     end
 
 
