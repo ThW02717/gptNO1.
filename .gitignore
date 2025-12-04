@@ -1,0 +1,9 @@
+# 忽略 build 目錄
+build/
+
+
+# 忽略編譯產出的檔案
+*.out
+*.vcd
+*.dump
+*.d

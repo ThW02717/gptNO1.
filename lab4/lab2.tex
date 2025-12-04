@@ -1,0 +1,140 @@
+\documentclass[11pt,a4paper]{article}
+
+% ===== Packages =====
+\usepackage{graphicx}   % 圖片
+\usepackage{amsmath}    % 數學公式
+\usepackage{booktabs}   % 表格線條
+
+\usepackage{float}
+\usepackage{graphicx}   % 插圖功能
+\usepackage{caption}
+\usepackage{subcaption} % 讓多圖排列用
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
+\geometry{margin=1in}
+
+% ===== Document =====
+\begin{document}
+
+% ===== Title Page =====
+\title{Lab 4: Pipelined RISC-V OOO Processor}
+\author{Student ID: 314551138}
+\date{11 13, 2025}
+\maketitle
+
+% ===== Sections =====
+\section{Introduction}
+This lab extends the previous pipelined RISC-V processor into an out-of-order (OoO) design by implementing a Reorder Buffer (ROB) that enforces in-order commitment while allowing instructions to execute and write back out of order. The ROB manages pending results, tracks instruction readiness, and guarantees correct program semantics by committing one instruction at a time in program order. Through implementing and integrating the ROB with the existing pipeline, we transformed the baseline in-order issue processor into an I2OI model. The lab also includes designing assembly tests to verify correctness under WAW and load-use hazards, and evaluating performance improvements under different ROB sizes. Experimental results demonstrate that increasing ROB capacity improves IPC up to a saturation point, with four slots providing near-optimal performance for this single-issue architecture.
+
+\section{Design}
+
+
+The design of the reorder buffer (ROB) follows the prescribed datapath specification with minimal deviation, focusing on correctness and simplicity. The ROB is implemented as a circular queue with 16 entries, each storing three fields: a valid bit, a pending bit, and the physical destination register address. Two 4-bit pointers, \texttt{head} and \texttt{tail}, manage commit and allocation positions respectively. During allocation, an entry is marked valid and pending until its corresponding instruction completes execution and writes back, at which point the pending bit is cleared through the fill interface. The commit logic allows only the instruction at the head to commit when it is both valid and not pending, ensuring strict in-order retirement even when execution and writeback occur out of order. This approach guarantees correctness in the presence of WAW and load-use hazards. No speculative or branch recovery mechanisms were added, as the lab specification explicitly excludes them. The design closely matches the reference model and prioritizes functional clarity over aggressive optimization. Our implementation achieves consistent performance and passes all directed and random test cases without requiring any modification to the control or datapath structure beyond the ROB integration.
+\section{Testing Methodology}
+
+To validate the correctness, performance, and robustness of the out-of-order processor, five directed assembly tests were designed to systematically exercise the functionality of the Reorder Buffer (ROB) and its integration with the scoreboard and pipeline. Each test contained fewer than thirty instructions and focused on one microarchitectural behavior at a time, ensuring clear isolation of each mechanism.
+
+\begin{itemize}
+  \item \textbf{riscv-test1: Out-of-order commit violation.}  
+  This test exposed the flaw in the baseline \texttt{I2O2} processor, where a long-latency multiplication overwrote the result of a short-latency arithmetic instruction to the same register. The \texttt{I2OI} processor with the ROB correctly preserved program semantics by enforcing in-order commit.
+
+  \item \textbf{riscv-test2: Bypassing from the ROB.}  
+  This case verified that values written back but not yet committed can be forwarded from the ROB to dependent instructions. When an earlier slow instruction blocks the commit stage, a subsequent instruction still consumes the correct data via ROB bypassing, demonstrating functional forwarding between writeback and decode.
+
+  \item \textbf{riscv-test3: Write-after-write (WAW) scenario.}  
+  Two writes to the same destination register were spaced far enough apart that the first completed and committed before the second arrived. Both the baseline and the ROB-based processor executed correctly, confirming that natural temporal spacing can eliminate false dependencies.
+
+  \item \textbf{riscv-test4: IPC comparison.}  
+  This test compared throughput between \texttt{riscvlong} (without ROB) and \texttt{riscvooo} (with ROB). The ROB introduces additional bookkeeping and in-order commit delay, slightly reducing IPC in fully independent instruction streams. This demonstrates the performance–correctness trade-off inherent to precise architectures.
+
+  \item \textbf{riscv-test5: ROB capacity stress.}  
+  Multiple independent instructions were issued continuously to fill all ROB slots(init number of slots is 2). Once full, the pipeline stalled until the head entry committed, confirming correct handling of full conditions, pointer wrap-around, and recovery without deadlock or data loss.
+\end{itemize}
+
+Corner cases were also considered, including simultaneous allocate and commit cycles, partial stalls in memory or mul/div pipelines, and ROB wrap-around scenarios. These tests ensured correct pointer arithmetic, single-commit-per-cycle semantics, and consistent synchronization between the ROB, scoreboard, and architectural register file. The complete suite demonstrated that the processor maintains in-order architectural visibility while supporting out-of-order execution internally.
+
+\section{Evaluation and Discussion}
+\subsection{Benchmark}
+Table~\ref{tab:perf} compares the performance of the baseline \texttt{riscvlong} (I2O2) and the ROB-based \texttt{riscvooo} (I2OI) processors using the provided \texttt{ubmark} benchmarks. Each benchmark reports total cycle count and IPC (instructions per cycle).
+
+\begin{table}[H]
+\centering
+\caption{Performance Comparison between \texttt{riscvlong} and \texttt{riscvooo}}
+\label{tab:perf}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Benchmark} & \textbf{riscvlong Cycles} & \textbf{riscvlong IPC} & \textbf{riscvooo Cycles} & \textbf{riscvooo IPC}  \\
+\midrule
+ubmark-vvadd         & 1,537  & 0.6936 & 1,524  & 0.6975 \\
+ubmark-masked-filter & 10,397 & 0.6700 & 11,253 & 0.6188  \\
+ubmark-cmplx-mult    & 4,203  & 0.7021 & 4,094  & 0.7201 \\
+ubmark-bin-search    & 1,635  & 0.6899 & 1,577  & 0.7134  \\
+\end{tabular}
+\end{table}
+
+\noindent
+\textbf{Observations:}
+\begin{itemize}
+  \item In compute-heavy or independent instruction streams (e.g., \texttt{vvadd}, \texttt{cmplx-mult}), the ROB-based design achieves slightly higher IPC by overlapping long-latency operations and reducing idle cycles.
+  \item In memory-dependent workloads (e.g., \texttt{masked-filter}), the simpler in-order pipeline achieves higher IPC since it avoids ROB commit and synchronization overhead.
+  \item For short or control-dominated workloads (e.g., \texttt{bin-search}), both designs show nearly identical IPCs, as pipeline performance is limited by branch frequency and data dependencies.
+  \item From the Iron Law perspective, the ROB improves the CPI term by overlapping computation but adds minor latency in commit synchronization, balancing correctness and throughput.
+\end{itemize}
+\subsection{Reorder Buffer (ROB) Analysis}
+
+To evaluate the scalability of the reorder buffer (ROB), we varied its capacity from 2 to 16 entries and measured the total cycle count and IPC using \texttt{riscv-test5.S}.  
+This test begins with a long-latency \texttt{MUL} instruction followed by a stream of independent one-cycle \texttt{ALU} and two-cycle \texttt{MEM} operations, which effectively stresses the ROB by maintaining multiple in-flight instructions.
+
+\begin{table}[H]
+\centering
+\caption{Performance of \texttt{riscv-test5.S} under different ROB sizes}
+\begin{tabular}{cccc}
+\toprule
+\textbf{ROB Slots} & \textbf{Cycles} & \textbf{Instructions} & \textbf{IPC} \\
+\midrule
+2  & 108 & 50 & 0.462963 \\
+4  & 71  & 50 & 0.704225 \\
+8  & 63  & 50 & 0.793651 \\
+16 & 63  & 50 & 0.793651 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+\textbf{Discussion.}  
+When the ROB is limited to 2 entries, the long-latency \texttt{MUL} , \texttt{ADD}, and \texttt{LOAD} instruction blocks subsequent independent operations, significantly lowering the IPC to 0.47.  
+Expanding the ROB to 4 or more entries allows multiple instructions to be in flight concurrently, effectively hiding execution latency and improving IPC to 0.79.  
+Beyond 8 entries, performance saturates, as the single-issue core commits only one instruction per cycle, limiting further speedup.
+
+Therefore, the minimum effective ROB size required for this design is \textbf{8 slots}, which achieves the same IPC as larger configurations while minimizing hardware cost.
+
+\section{Figure}
+\begin{figure}[H]
+\centering
+\begin{verbatim}
++-----------------------------------------------------------------------------------+
+| Slot | Valid | Pending | Speculative | Dest (PReg) | Description                 |
+|-----------------------------------------------------------------------------------|
+|  0   |   1   |   0     |     0       |  x5         | Head: Ready to commit        |
+|  1   |   1   |   1     |     0       |  x6         | Waiting for WB (still busy)  |
+|  2   |   1   |   1     |     0       |  x7         | In-flight ALU instruction    |
+|  3   |   1   |   0     |     0       |  x8         | Completed, awaiting commit   |
+|  ... |  ...  |  ...    |    ...      |  ...        |  ...                         |
+| 15   |   0   |   0     |     0       |   ---       | Tail: Next alloc position    |
++-----------------------------------------------------------------------------------+
+\end{verbatim}
+\caption{Structure of the 16-entry Reorder Buffer (ROB). 
+Each entry records whether an instruction is valid, still pending (not yet written back), or speculative. 
+The \texttt{Dest (PReg)} field holds the destination architectural register index. 
+The head pointer always identifies the oldest valid instruction ready to commit in program order, 
+while the tail pointer indicates the next free slot for allocation from the decode stage. 
+Pending entries represent in-flight operations that have executed out-of-order but not yet committed.}
+\end{figure}
+
+
+
+
+
+
+\end{document}
