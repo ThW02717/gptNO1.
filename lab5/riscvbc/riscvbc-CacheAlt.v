@@ -35,7 +35,7 @@ module riscv_CacheAlt (
     output                      cacheresp_rdy,
     input  [`VC_MEM_RESP_MSG_SZ(32)-1:0]   cacheresp_msg
 );
-
+  wire [31:0] vc_refill_addr;
   //----------------------------------------------------------------------  
   // Wires
   //----------------------------------------------------------------------  
@@ -55,7 +55,7 @@ module riscv_CacheAlt (
   wire        lru_update;
 
   // Status Signals
-  wire [2:0]  state;
+  wire [3:0]  state;
   wire        type;
   wire        hit;
   wire        hit0;
@@ -113,7 +113,7 @@ module riscv_CacheAlt (
 
       // D-cache -> Victim Cache (Refill Probe)
       .dcache_refill_val  (vc_refill_val),
-      .dcache_refill_addr (memreq_msg[65:34]),
+      .dcache_refill_addr (vc_refill_addr),
 
       .victim_hit         (vc_hit),
       .victim_read_data   (vc_read_data),
@@ -171,7 +171,7 @@ module riscv_CacheAlt (
     .vc_mem_req_val     (vc_mem_req_val),
     .vc_mem_req_addr    (vc_mem_req_addr),
     .vc_mem_req_data    (vc_mem_req_data),
-
+    .vc_refill_addr     (vc_refill_addr),
     // RAM Connections
     .tag_addr           (tag_addr),
     .data_addr          (data_addr),
@@ -295,7 +295,26 @@ vc_RAM_rst_1w1r_pf #(
   .waddr_p(tag_addr),
   .wdata_p(tag1_wdata)
 );
-
+  // ---------------- Debug: TOP→VC refill addr wiring ----------------
+  // 用 +cachedbg 開啟
+  always @(posedge clk) begin
+    if (!reset && $test$plusargs("cachedbg")) begin
+      if (vc_refill_val) begin
+        $display("[TOP %0t] VC_REFILL wired addr = vc_refill_addr=%h", $time, vc_refill_addr);
+      end
+    end
+  end
+  // ---------------- Debug: VC probe ----------------
+  // 用 +cachedbg_vc_probe 開啟
+  always @(posedge clk) begin
+    if (!reset && $test$plusargs("cachedbg_vc_probe")) begin
+      // CHECK_VICTIM = 4'd2
+      if (state == 4'd2) begin
+        $display("[VC-PROBE %0t] addr=%h key=%h | vc_hit=%b",
+                 $time, vc_refill_addr, vc_refill_addr[31:6], vc_hit);
+      end
+    end
+  end
 endmodule
 
 //------------------------------------------------------------------------
@@ -311,7 +330,7 @@ module riscv_CacheAltDpath (
     output [`VC_MEM_RESP_MSG_SZ(32)-1:0]   memresp_msg,
     output [`VC_MEM_REQ_MSG_SZ(32,32)-1:0] cachereq_msg,
 
-    input       [2:0]  state,
+    input       [3:0]  state,
     input              memreq_en,
     input       [1:0]  write_data_mux_sel,
     input              miss,
@@ -349,7 +368,8 @@ module riscv_CacheAltDpath (
     output [22:0]          tag1_wdata,
     input  [22:0]          tag1_rdata,
     output [`BLK_SIZE-1:0] data1_wdata,
-    input  [`BLK_SIZE-1:0] data1_rdata
+    input  [`BLK_SIZE-1:0] data1_rdata,
+    output [31:0]  reg    vc_refill_addr
 );
 
     // ---------------- Unpack MemReq ----------------
@@ -385,14 +405,15 @@ module riscv_CacheAltDpath (
              memreq_data_reg <= memreq_data;
         end
     end
+    
 
     wire [`OFF_BITS-1:0] offset = memreq_addr_reg[5:0];
     wire [`IDX_BITS-1:0] index  = memreq_addr_reg[10:6];
     wire [`TAG_BITS-1:0] tag    = memreq_addr_reg[31:11];
-
+    assign vc_refill_addr = memreq_addr_reg;
     // Address Mux：IDLE/DONE (state==0) 且有新 memreq_val 才用 comb addr
     wire [`IDX_BITS-1:0] index_comb = memreq_addr_comb[10:6];
-    wire use_comb = (state == 3'd0) && memreq_val;
+    wire use_comb = (state == 4'd0) && memreq_val;
     assign tag_addr  = (use_comb) ? index_comb : index;
     assign data_addr = (use_comb) ? index_comb : index;
 
@@ -586,7 +607,22 @@ module riscv_CacheAltDpath (
         .data (final_req_data),
         .bits (cachereq_msg)
     );
-
+// ---------------- Debug: D$ MISS address ----------------
+    // 用 +cachedbg 開啟
+    always @(posedge clk) begin
+        if (!reset && $test$plusargs("cachedbg")) begin
+            // state == READ_CACHE (Ctrl 那邊 READ_CACHE=4'd1 → state[3:0]=4'b0001)
+            if (state == 4'b0001 && !hit) begin
+                $display("[D$ %0t] MISS: memreq_addr_reg=%h index=%0d tag=%h block_base=%h",
+                         $time,
+                         memreq_addr_reg,
+                         memreq_addr_reg[10:6],
+                         memreq_addr_reg[31:11],
+                         { memreq_addr_reg[31:6], 6'b0 });
+            end
+        end
+    end
+    
 endmodule
 
 //------------------------------------------------------------------------
@@ -615,7 +651,7 @@ module riscv_CacheAltCtrl (
     input           lru_victim,
     input   [4:0]   refill_counter,
 
-    output  [2:0]   state,
+    output  [3:0]   state,
     output reg      memreq_en,
     output reg      tag_wen,
     output reg      data_wen,
@@ -646,7 +682,7 @@ module riscv_CacheAltCtrl (
     localparam DONE          = 4'd8;
 
     reg [3:0] curr_state, next_state;
-    assign state = curr_state[2:0];
+    assign state = curr_state[3:0];
 
     always @(posedge clk) begin
         if (reset)
@@ -860,11 +896,42 @@ module riscv_CacheAltCtrl (
             end
         endcase
     end
-
+     // ---------------- Debug: UPDATE_CACHE 分類 ----------------
+    // 用 +cachedbg_upd 開啟
+    always @(posedge clk) begin
+        if (!reset && $test$plusargs("cachedbg_upd")) begin
+            if (curr_state == UPDATE_CACHE) begin
+                if (refill_counter != 5'd0) begin
+                    $display("[UPD  %0t] REFILL -> write L1 | refill_counter=%0d way_sel=%b victim_dirty=%b",
+                             $time, refill_counter, way_sel, victim_dirty);
+                end
+                else if (vc_hit) begin
+                    $display("[UPD  %0t] VC HIT -> swap VC<->L1 | way_sel=%b victim_dirty=%b",
+                             $time, way_sel, victim_dirty);
+                end
+                else begin
+                    $display("[UPD  %0t] WRITE HIT -> in-place update | way_sel=%b",
+                             $time, way_sel);
+                end
+            end
+        end
+    end
     assign memreq_rdy    = memreq_rdy_reg;
     assign memresp_val   = memresp_val_reg;
     assign cachereq_val  = cachereq_val_reg;
     assign cacheresp_rdy = cacheresp_rdy_reg;
+
+    always @(posedge clk) begin
+        if (!reset && $test$plusargs("cachedbg_ctrl")) begin
+            $display(
+            "[CTRL %0t] state=%0d hit=%b miss=%b vc_hit=%b vc_refill_val=%b vc_mem_req_val=%b | cachereq_val=%b cachereq_rdy=%b cacheresp_val=%b | memresp_val=%b memresp_rdy=%b refill_cnt=%0d",
+            $time, curr_state, hit, miss, vc_hit, vc_refill_val, vc_mem_req_val,
+            cachereq_val, cachereq_rdy, cacheresp_val,
+            memresp_val, memresp_rdy, refill_counter
+            );
+        end
+    end
+
 
 endmodule
 
