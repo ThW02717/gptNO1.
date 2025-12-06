@@ -8,6 +8,14 @@ riscv_srcs += \
   riscv-custom2.S \
   riscv-custom3.S \
   riscv-custom4.S \
+  riscv-custom5.S \
+  riscv-custom6.S \
+  riscv-custom7.S \
+  riscv-custom8.S \
+  riscv-custom9.S \
+  riscv-custom10.S \
+  riscv-custom11.S \
+  riscv-custom12.S \
   riscv-add.S \
   riscv-addi.S \
   riscv-bne.S \

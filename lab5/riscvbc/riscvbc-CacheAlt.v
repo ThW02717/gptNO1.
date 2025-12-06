@@ -1,5 +1,5 @@
 //=========================================================================
-// Cache Alternative Design (4KB, 2-Way Set Assoc, 64B Block, LRU) + Victim Cache
+// Cache Alternative Design 
 //=========================================================================
 
 `ifndef RISCV_CACHE_ALT_V
@@ -7,7 +7,6 @@
 
 `include "riscvbc-CacheMsg.v"
 `include "vc-RAMs.v"
-// 注意：這裡假設 riscvbc-VictimCache.v 已經存在於你的目錄中
 `include "riscvbc-VictimCache.v"
 
 //-------------------------------------------------------------------------
@@ -247,7 +246,6 @@ module riscv_CacheAlt (
   assign tag1_wen  = tag_wen  && (way_sel == 1'b1);
   assign data1_wen = data_wen && (way_sel == 1'b1);
 
-  // Data RAM 0
   vc_RAM_rst_1w1r_pf #(
     .DATA_SZ(`BLK_SIZE), .ENTRIES(32), .ADDR_SZ(`IDX_BITS), .RESET_VALUE(0)
   ) _data_ram0 (
@@ -260,7 +258,6 @@ module riscv_CacheAlt (
     .wdata_p(data0_wdata)
   );
 
-  // Tag RAM 0
   vc_RAM_rst_1w1r_pf #(
     .DATA_SZ(23), .ENTRIES(32), .ADDR_SZ(`IDX_BITS), .RESET_VALUE(0)
   ) _tag_ram0 (
@@ -273,7 +270,6 @@ module riscv_CacheAlt (
     .wdata_p(tag0_wdata)
   );
 
-  // Data RAM 1
   vc_RAM_rst_1w1r_pf #(
     .DATA_SZ(`BLK_SIZE), .ENTRIES(32), .ADDR_SZ(`IDX_BITS), .RESET_VALUE(0)
   ) _data_ram1 (
@@ -286,7 +282,6 @@ module riscv_CacheAlt (
     .wdata_p(data1_wdata)
   );
 
-  // Tag RAM 1
   vc_RAM_rst_1w1r_pf #(
     .DATA_SZ(23), .ENTRIES(32), .ADDR_SZ(`IDX_BITS), .RESET_VALUE(0)
   ) _tag_ram1 (
@@ -299,14 +294,7 @@ module riscv_CacheAlt (
     .wdata_p(tag1_wdata)
   );
 
-  // ---------------- Debug: TOP→VC refill addr wiring ----------------
-  always @(posedge clk) begin
-    if (!reset && $test$plusargs("cachedbg")) begin
-      if (vc_refill_val) begin
-        $display("[TOP %0t] VC_REFILL wired addr = vc_refill_addr=%h", $time, vc_refill_addr);
-      end
-    end
-  end
+
     
 endmodule
 
@@ -365,7 +353,7 @@ module riscv_CacheAltDpath (
     output [31:0]          vc_refill_addr
 );
 
-    // ---------------- Unpack MemReq ----------------
+ 
     wire        memreq_type;
     wire [31:0] memreq_addr_comb;
     wire [1:0]  memreq_len;
@@ -379,7 +367,7 @@ module riscv_CacheAltDpath (
         .data (memreq_data)
     );
 
-    // Registers
+
     reg         memreq_type_reg;
     reg [31:0]  memreq_addr_reg;
     reg [1:0]   memreq_len_reg;
@@ -404,10 +392,9 @@ module riscv_CacheAltDpath (
     wire [`IDX_BITS-1:0] index  = memreq_addr_reg[10:6];
     wire [`TAG_BITS-1:0] tag    = memreq_addr_reg[31:11];
     
-    // 修正：使用 assign 避免模擬器卡死
     assign vc_refill_addr = memreq_addr_reg;
     
-    // Address Mux
+
     wire [`IDX_BITS-1:0] index_comb = memreq_addr_comb[10:6];
     wire use_comb = (state == 4'd0) && memreq_val;
     assign tag_addr  = (use_comb) ? index_comb : index;
@@ -445,7 +432,7 @@ module riscv_CacheAltDpath (
                           ? (valid0 & dirty0)
                           : (valid1 & dirty1);
 
-    // ---------------- EVICTION DATA PREP ----------------
+    // ---------------- EVICTION DATA PRE ----------------
     wire [`BLK_SIZE-1:0] victim_data = (lru_victim == 1'b0) ? data0_rdata
                                                             : data1_rdata;
     wire [`TAG_BITS-1:0] victim_tag  = (lru_victim == 1'b0) ? read_tag0
@@ -454,7 +441,7 @@ module riscv_CacheAltDpath (
     assign d_evict_data = victim_data;
     assign d_evict_addr = {victim_tag, index, 6'b0};
 
-    // ---------------- Data Read ----------------
+    // ---------------- Data Read -------------
     wire [`BLK_SIZE-1:0] data_block_hit = (hit0) ? data0_rdata : data1_rdata;
     wire [3:0] word_select = offset[5:2];
     wire [1:0] byte_offset = offset[1:0];
@@ -497,7 +484,7 @@ module riscv_CacheAltDpath (
         raw_word = read_data_hit;
     end
 
-    // ---------------- Load Data Formatting ----------------
+    // ---------------- Load Data SB  LB..... ----------------
     always @(*) begin
         final_read_data = raw_word;
         load_byte       = 8'b0;
@@ -532,14 +519,12 @@ module riscv_CacheAltDpath (
         .bits (memresp_msg)
     );
 
-    // ---------------- Write Data Construction ----------------
+    // ---------------- Write Data  ----------------
     wire [`BLK_SIZE-1:0] victim_data_read = (way_sel == 1'b0) ? data0_rdata : data1_rdata;
     reg [`BLK_SIZE-1:0] base_write_data;
     
-    // [修正] VC 資料鎖存器
     reg [511:0] vc_read_data_reg;
 
-    // [修正] 只在 VC_PROBE (State 2) 結束時鎖存資料
     always @(posedge clk) begin
         if (state == 4'd2) begin 
             vc_read_data_reg <= vc_read_data;
@@ -550,7 +535,7 @@ module riscv_CacheAltDpath (
         case (write_data_mux_sel)
             2'd0: base_write_data = victim_data_read; 
             2'd1: base_write_data = refill_data;      
-            2'd2: base_write_data = vc_read_data_reg; // [修正] 使用 Register
+            2'd2: base_write_data = vc_read_data_reg;
             default: base_write_data = {`BLK_SIZE{1'b0}};
         endcase
     end
@@ -583,13 +568,12 @@ module riscv_CacheAltDpath (
     assign data0_wdata = modified_write_data;
     assign data1_wdata = modified_write_data;
 
-    // [修正] Dirty Bit 邏輯：寫入操作 OR 來自 VC 的 Swap 都是 Dirty
     wire new_dirty = (type) || (write_data_mux_sel == 2'd2);
     
     assign tag0_wdata = {1'b1, new_dirty, tag};
     assign tag1_wdata = {1'b1, new_dirty, tag};
 
-    // ---------------- Memory Request MUX (Refill vs VC Evict) ----------------
+    // ---------------- Memory Request MUX -------
     wire [31:0] refill_req_addr = {tag, index, refill_counter[3:0], 2'b00};
     wire [31:0] vc_block_base   = vc_mem_req_addr; 
     wire [31:0] vc_word_addr    = { vc_block_base[31:2] + refill_counter[3:0],
@@ -611,29 +595,7 @@ module riscv_CacheAltDpath (
         .bits (cachereq_msg)
     );
 
-    // ---------------- Debug ----------------
-    always @(posedge clk) begin
-        if (!reset && $test$plusargs("cachedbg")) begin
-            if (state == 4'b0001 && !hit) begin
-                $display("[D$ %0t] MISS: memreq_addr_reg=%h index=%0d tag=%h block_base=%h",
-                         $time,
-                         memreq_addr_reg,
-                         memreq_addr_reg[10:6],
-                         memreq_addr_reg[31:11],
-                         { memreq_addr_reg[31:6], 6'b0 });
-            end
-        end
-    end
     
-    // Debug for Swap
-    always @(posedge clk) begin
-        if (!reset && $test$plusargs("cachedbg")) begin
-            if (state == 4'd8 && write_data_mux_sel == 2'd2) begin
-                $display("[VC->L1] time=%0t idx=%0d way=%0d word0=%08x Reg=%08x",
-                        $time, index, way_sel, vc_read_data[31:0], vc_read_data_reg[31:0]);
-            end
-        end
-    end
 endmodule
 
 //------------------------------------------------------------------------
@@ -730,7 +692,6 @@ module riscv_CacheAltCtrl (
         end
 
         VC_RESP: begin
-        // [修正] 使用 vc_hit_hold 判斷
         if (vc_hit_hold) next_state = UPDATE_CACHE;
         else             next_state = READ_MEM_REQ;
         end
@@ -740,11 +701,15 @@ module riscv_CacheAltCtrl (
                          if (refill_counter < 5'd15) next_state = READ_MEM_REQ;
                          else                        next_state = UPDATE_CACHE;
                          end
+        
+        
         VC_EVICT_REQ:  if (cachereq_rdy) next_state = VC_EVICT_RESP;
-        VC_EVICT_RESP: if (cachereq_rdy) begin
+        
+        VC_EVICT_RESP: begin
                          if (refill_counter < 5'd15) next_state = VC_EVICT_REQ;
                          else                        next_state = DONE;
-                         end
+                       end
+
         UPDATE_CACHE:  next_state = DONE;
 
         DONE: begin
@@ -767,7 +732,6 @@ module riscv_CacheAltCtrl (
     if (reset)
         vc_hit_hold <= 1'b0;
     else begin
-        // [修正] 在 VC_PROBE (State 2) 結束時鎖存訊號
         if (curr_state == VC_PROBE)
             vc_hit_hold <= vc_hit;
         else if (curr_state == DONE && memresp_rdy)
@@ -847,15 +811,16 @@ module riscv_CacheAltCtrl (
             cachereq_val_reg = 1'b1;
             evict_sel        = 1'b1;
             miss             = 1'b1;
+            cacheresp_rdy_reg = 1'b1;
             end
 
             VC_EVICT_RESP: begin
             miss      = 1'b1;
             evict_sel = 1'b1;
-            if (cachereq_rdy) begin
-                refill_cnt_en = 1'b1;
-            end
-            if (refill_counter == 5'd15 && cachereq_rdy) begin
+            refill_cnt_en     = 1'b1;
+            cacheresp_rdy_reg = 1'b1;
+            
+            if (refill_counter == 5'd15) begin
                 refill_cnt_clr = 1'b1;
             end
             end
@@ -892,40 +857,13 @@ module riscv_CacheAltCtrl (
         endcase
     end
     
-    // Debug
-    always @(posedge clk) begin
-        if (!reset && $test$plusargs("cachedbg_upd")) begin
-            if (curr_state == UPDATE_CACHE) begin
-                if (refill_counter != 5'd0) begin
-                    $display("[UPD  %0t] REFILL -> write L1 | refill_counter=%0d way_sel=%b victim_dirty=%b",
-                             $time, refill_counter, way_sel, victim_dirty);
-                end
-                else if (vc_hit_hold) begin
-                    $display("[UPD  %0t] VC HIT -> swap VC<->L1 | way_sel=%b victim_dirty=%b",
-                             $time, way_sel, victim_dirty);
-                end
-                else begin
-                    $display("[UPD  %0t] WRITE HIT -> in-place update | way_sel=%b",
-                             $time, way_sel);
-                end
-            end
-        end
-    end
+ 
     assign memreq_rdy    = memreq_rdy_reg;
     assign memresp_val   = memresp_val_reg;
     assign cachereq_val  = cachereq_val_reg;
     assign cacheresp_rdy = cacheresp_rdy_reg;
 
-    always @(posedge clk) begin
-    if (!reset && $test$plusargs("cachedbg_ctrl")) begin
-        $display(
-        "[CTRL %0t] state=%0d hit=%b miss=%b vc_hit=%b vc_refill_val=%b vc_mem_req_val=%b | cachereq_val=%b cachereq_rdy=%b cacheresp_val=%b | memresp_val=%b memresp_rdy=%b refill_cnt=%0d",
-        $time, curr_state, hit, miss, vc_hit, vc_refill_val, vc_mem_req_val,
-        cachereq_val, cachereq_rdy, cacheresp_val,
-        memresp_val, memresp_rdy, refill_counter
-        );
-    end
-    end
+   
 
 endmodule
 
